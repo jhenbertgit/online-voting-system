@@ -1,7 +1,9 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { clerkMiddleware } from '@clerk/express';
-import { ValidationPipe } from '@nestjs/common'; // Import ValidationPipe
+import { ValidationPipe } from '@nestjs/common';
+import { RateLimiterMiddleware } from './middleware';
+import { RedisService } from './redis';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -16,6 +18,10 @@ async function bootstrap() {
       // Add other Clerk middleware options here as needed
     }),
   );
+
+  // Rate limiting middleware for /ballot POST (votes)
+  const redisService = app.get(RedisService);
+  app.use('/ballot', new RateLimiterMiddleware(redisService).use);
 
   await app.listen(process.env.PORT ?? 5000);
 }

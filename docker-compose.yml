@@ -1,0 +1,46 @@
+version: "3.8"
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: nestjs_postgres
+    environment:
+      POSTGRES_USER: ${DB_USER:-user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-dev123}
+      POSTGRES_DB: ${DB_NAME:-ovs}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-user}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - nestjs_network
+
+  redis:
+    image: redis:7-alpine
+    container_name: nestjs_redis
+    command: redis-server --save 60 1 --loglevel warning --requirepass ${REDIS_PASSWORD:-dev123}
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - nestjs_network
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  nestjs_network:
+    driver: bridge

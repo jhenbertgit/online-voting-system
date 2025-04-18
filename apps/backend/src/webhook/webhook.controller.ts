@@ -1,69 +1,42 @@
 import {
   Controller,
   Post,
-  Body,
   Headers,
   HttpCode,
   HttpStatus,
+  Req,
+  RawBodyRequest,
+  UnauthorizedException,
 } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { PrismaService } from '../prisma/prisma.service';
 import { WebhookService } from './webhook.service';
+import { Request } from 'express';
 
 @Controller('webhooks')
 export class WebhookController {
-  constructor(
-    private readonly configService: ConfigService,
-    private readonly prisma: PrismaService,
-    private readonly webhookService: WebhookService,
-  ) {}
+  constructor(private readonly webhookService: WebhookService) {}
 
   @Post('clerk')
-  @HttpCode(HttpStatus.OK) // Clerk requires a 200 OK response
+  @HttpCode(HttpStatus.OK)
   async handleClerkWebhook(
-    @Headers('Clerk-Signature') clerkSignature: string,
-    @Body() payload: any,
+    @Headers() headers: Record<string, string>,
+    @Req() req: RawBodyRequest<Request>,
   ) {
-    const clerkWebhookSecret = this.configService.get<string>(
-      'CLERK_WEBHOOK_SECRET',
-    );
-
-    if (!clerkWebhookSecret) {
-      console.error('Clerk webhook secret not set.');
-      return;
-    }
-
     try {
-      // Verify the Clerk signature
-      const verified = this.webhookService.verifyClerkSignature(
-        clerkSignature,
-        payload,
-        clerkWebhookSecret,
+      // 1. Verify webhook signature
+      const event = await this.webhookService.verifyClerkWebhook(
+        headers,
+        req.rawBody?.toString() ?? '',
       );
 
-      if (!verified) {
-        console.warn('Invalid Clerk signature.');
-        return;
+      if (!event) {
+        throw new UnauthorizedException('Invalid webhook signature');
       }
 
-      const eventType = payload.type; // e.g., 'user.created', 'user.updated'
-
-      // Handle different event types
-      switch (eventType) {
-        case 'user.created':
-          await this.webhookService.handleUserCreated(payload.data);
-          break;
-        case 'user.updated':
-          await this.webhookService.handleUserUpdated(payload.data);
-          break;
-        case 'user.deleted':
-          await this.webhookService.handleUserDeleted(payload.data);
-          break;
-        default:
-          console.log(`Unhandled Clerk event: ${eventType}`);
-      }
+      // 2. Process the event
+      return await this.webhookService.processWebhook(event);
     } catch (error) {
-      console.error('Error handling Clerk webhook:', error);
+      console.error(`Webhook processing failed: ${error.message}`);
+      throw error; // Let NestJS handle the exception
     }
   }
 }
