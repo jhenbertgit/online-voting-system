@@ -1,2 +1,12 @@
 .env
 !.env.example
+
+# Typechain
+typechain-types
+
+# Hardhat
+hardhat
+cache
+
+# Node
+node_modules

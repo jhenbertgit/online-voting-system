@@ -1,13 +1,10 @@
 import { ethers } from "hardhat";
 
-// Example deployment script
 async function main() {
-  // Replace 'Voting' with your contract name
-  const AnonymousVoting = await ethers.getContractFactory("AnonymousVoting");
-  const contract = await AnonymousVoting.deploy();
-
-  await contract.deployed();
-  console.log(`Contract deployed to: ${contract.address}`);
+  const VotingGuardian = await ethers.getContractFactory("VotingGuardian");
+  const contract = await VotingGuardian.deploy();
+  await contract.waitForDeployment();
+  console.log(`Contract deployed to: ${await contract.getAddress()}`);
 }
 
 main().catch((error) => {
