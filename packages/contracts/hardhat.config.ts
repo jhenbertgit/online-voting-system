@@ -23,7 +23,7 @@ const config: HardhatUserConfig = {
     },
   },
   paths: {
-    artifacts: "../frontend/contract-artifacts", // Good frontend integration
+    artifacts: "../../apps/frontend/contract-artifacts", // Good frontend integration
   },
   contractSizer: {
     runOnCompile: true,
