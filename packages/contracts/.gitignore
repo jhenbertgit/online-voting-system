@@ -5,8 +5,8 @@
 typechain-types
 
 # Hardhat
-hardhat
 cache
+artifacts
 
 # Node
 node_modules

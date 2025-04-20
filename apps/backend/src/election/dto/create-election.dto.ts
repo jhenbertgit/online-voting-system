@@ -1,4 +1,11 @@
-import { IsString, IsNotEmpty, IsDate } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsDate,
+  IsEthereumAddress,
+  IsHexadecimal,
+  Length,
+} from 'class-validator';
 
 export class CreateElectionDto {
   @IsString()
@@ -13,4 +20,14 @@ export class CreateElectionDto {
 
   @IsDate()
   endDate: Date;
+
+  @IsHexadecimal()
+  @Length(32, 32)
+  merkleRoot: string;
+
+  @IsEthereumAddress()
+  contractAddress: string;
+
+  @IsEthereumAddress()
+  adminAddress: string;
 }

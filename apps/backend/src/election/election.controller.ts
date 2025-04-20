@@ -44,4 +44,9 @@ export class ElectionController {
     const userId = req.user.id;
     return this.electionService.approveElection(id, userId);
   }
+
+  @Get(':electionId/proof/:commitment')
+  async getProof(@Param() params: { electionId: string; commitment: string }) {
+    return this.electionService.getProof(params);
+  }
 }

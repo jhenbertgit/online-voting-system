@@ -7,7 +7,15 @@ import "dotenv/config";
 const { POLYGON_AMOY_RPC_URL, PRIVATE_KEY, POLYGONSCAN_API_KEY } = process.env;
 
 const config: HardhatUserConfig = {
-  solidity: "0.8.20", // Matches contract pragma
+  solidity: {
+    version: "0.8.20",
+    settings: {
+      optimizer: {
+        enabled: true,
+        runs: 200,
+      },
+    },
+  },
   networks: {
     amoy: {
       url: POLYGON_AMOY_RPC_URL, // Correct RPC endpoint
@@ -19,14 +27,17 @@ const config: HardhatUserConfig = {
   },
   etherscan: {
     apiKey: {
-      polygonAmoy: POLYGONSCAN_API_KEY!, // Correct scanner key
+      polygonAmoy: POLYGONSCAN_API_KEY!,
     },
   },
   paths: {
-    artifacts: "../../apps/frontend/contract-artifacts", // Good frontend integration
+    artifacts: "./artifacts/contract-artifacts",
   },
   contractSizer: {
     runOnCompile: true,
+  },
+  sourcify: {
+    enabled: true,
   },
 };
 

@@ -1,4 +1,11 @@
-import { IsString, IsUUID } from 'class-validator';
+import {
+  IsString,
+  IsUUID,
+  IsHexadecimal,
+  Length,
+  IsOptional,
+  IsEthereumAddress,
+} from 'class-validator';
 
 export class SubmitVoteDto {
   @IsUUID()
@@ -13,6 +20,15 @@ export class SubmitVoteDto {
   @IsString()
   userId: string;
 
-  @IsString()
-  txHash: string;
+  @IsHexadecimal()
+  @Length(32, 32)
+  candidateHash: string;
+
+  @IsHexadecimal()
+  @Length(32, 32)
+  voterCommitment: string;
+
+  @IsEthereumAddress()
+  @IsOptional()
+  txHash?: string;
 }

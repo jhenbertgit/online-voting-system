@@ -29,9 +29,22 @@ model Election {
   description String?
   startDate   DateTime
   endDate     DateTime
+  approved    Boolean    @default(false)
+  merkleRoot  String     @unique // bytes32 hex string from contract
+  chainId     Int?       @unique // On-chain election ID (uint256)
   positions   Position[]
+  votes       Vote[]
   createdAt   DateTime   @default(now())
-  Vote        Vote[]
+
+  // Added for blockchain integration
+  contractAddress String // VotingGuardian contract address
+  adminAddress    String // Election admin wallet address
+  candidateTree   Json? // Merkle tree structure for candidates
+  Candidate       Candidate[]
+
+  @@index([startDate])
+  @@index([endDate])
+  @@index([merkleRoot])
 }
 
 model Position {
@@ -47,23 +60,32 @@ model Candidate {
   id         String   @id @default(uuid())
   name       String
   bio        String?
+  idHash     String   @unique // keccak256(candidateId) for blockchain
   position   Position @relation(fields: [positionId], references: [id])
   positionId String
+  election   Election @relation(fields: [electionId], references: [id])
+  electionId String
   votes      Vote[]
+
+  @@index([idHash, positionId])
 }
 
 model Vote {
-  id          String    @id @default(uuid())
-  election    Election  @relation(fields: [electionId], references: [id])
-  electionId  String
-  position    Position  @relation(fields: [positionId], references: [id])
-  positionId  String
-  candidate   Candidate @relation(fields: [candidateId], references: [id])
-  candidateId String
-  user        User      @relation(fields: [userId], references: [id])
-  userId      String
-  txHash      String? // Blockchain transaction hash
-  createdAt   DateTime  @default(now())
+  id              String    @id @default(uuid())
+  election        Election  @relation(fields: [electionId], references: [id])
+  electionId      String
+  position        Position  @relation(fields: [positionId], references: [id])
+  positionId      String
+  candidate       Candidate @relation(fields: [candidateId], references: [id])
+  candidateId     String
+  candidateHash   String // Reference to Candidate.idHash
+  user            User      @relation(fields: [userId], references: [id])
+  userId          String
+  voterCommitment String    @unique // keccak256(userId + secret)
+  txHash          String?   @unique
+  createdAt       DateTime  @default(now())
+
+  @@unique([electionId, voterCommitment])
 }
 
 enum Role {
