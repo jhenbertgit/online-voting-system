@@ -117,4 +117,8 @@ export class WebhookService {
       throw new Error('Failed to delete user');
     }
   }
+
+  test() {
+    return 'test';
+  }
 }

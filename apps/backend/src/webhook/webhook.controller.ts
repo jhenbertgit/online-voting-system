@@ -7,6 +7,7 @@ import {
   Req,
   RawBodyRequest,
   UnauthorizedException,
+  Get,
 } from '@nestjs/common';
 import { WebhookService } from './webhook.service';
 import { Request } from 'express';
@@ -38,5 +39,11 @@ export class WebhookController {
       console.error(`Webhook processing failed: ${error.message}`);
       throw error; // Let NestJS handle the exception
     }
+  }
+
+  @Get()
+  @HttpCode(HttpStatus.OK)
+  test() {
+    return this.webhookService.test();
   }
 }
