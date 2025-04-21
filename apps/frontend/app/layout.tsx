@@ -33,7 +33,7 @@ export default function RootLayout({
         appearance={{
           variables: {
             colorPrimary: "#624cf5",
-            fontFamily: geistMono.variable,
+            fontFamily: geistSans.variable,
           },
           elements: {
             footer: "hidden",

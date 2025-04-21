@@ -84,7 +84,7 @@ export function CreateElection() {
 
       // 5. Create election on-chain
       const tx = await contract.createElection(
-        ethers.id(formData.name), // Changed from ethers.id to ethers.utils.keccak256
+        ethers.id(formData.name),
         formData.name,
         startTime,
         endTime,
