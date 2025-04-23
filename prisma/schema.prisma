@@ -1,0 +1,11 @@
+model Election {
+  id                Int      @id @default(autoincrement())
+  name              String
+  description       String?
+  onChainElectionId String   @unique
+  // other fields, such as startDate, endDate, merkleRoot, etc.
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@map("elections")
+}

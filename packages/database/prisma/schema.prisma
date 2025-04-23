@@ -24,17 +24,17 @@ model User {
 }
 
 model Election {
-  id          String     @id @default(uuid())
-  name        String
-  description String?
-  startDate   DateTime
-  endDate     DateTime
-  approved    Boolean    @default(false)
-  merkleRoot  String     @unique // bytes32 hex string from contract
-  chainId     Int?       @unique // On-chain election ID (uint256)
-  positions   Position[]
-  votes       Vote[]
-  createdAt   DateTime   @default(now())
+  id                String     @id @default(uuid())
+  name              String
+  description       String?
+  startDate         DateTime
+  endDate           DateTime
+  approved          Boolean    @default(false)
+  merkleRoot        String     @unique // bytes32 hex string from contract
+  onChainElectionId String?    @unique // On-chain election ID (uint256)
+  positions         Position[]
+  votes             Vote[]
+  createdAt         DateTime   @default(now())
 
   // Added for blockchain integration
   contractAddress String // VotingGuardian contract address

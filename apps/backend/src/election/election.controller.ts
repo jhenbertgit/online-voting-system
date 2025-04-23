@@ -29,9 +29,10 @@ export class ElectionController {
   @Roles(UserRole.ADMIN)
   async createElection(
     @Body() createElectionDto: CreateElectionDto,
-    @Request() req: any, // Use Request to access user data
+    @Request() req: { user: { id: string } }, // Explicitly type the user object
   ) {
     const userId = req.user.id; // Assuming req.user is populated by ClerkAuthGuard
+    // The updated DTO now includes onChainElectionId
     return this.electionService.createElection(userId, createElectionDto);
   }
 
@@ -39,9 +40,9 @@ export class ElectionController {
   @Roles(UserRole.ADMIN, UserRole.ELECTION_OFFICER)
   async approveElection(
     @Param('id') id: string, // Get the election ID from the URL
-    @Request() req: any,
+    @Request() req: { user: { id: string } },
   ) {
-    const userId = req.user.id;
+    const userId = req.user.id; // User ID is now safely typed
     return this.electionService.approveElection(id, userId);
   }
 

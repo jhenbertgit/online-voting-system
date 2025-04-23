@@ -1,4 +1,3 @@
-// components/CreateElection.tsx
 "use client";
 
 import { useState } from "react";
@@ -28,6 +27,8 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { DatePickerWithRange } from "./DatePickerWithRange";
+import { WalletConnectButton } from "./WalletConnectButton";
 
 export function CreateElection() {
   const config = useConfig();
@@ -98,7 +99,8 @@ export function CreateElection() {
       const receipt = await tx.wait();
 
       // 6. Store in backend
-      const response = await fetch(`${url}/elections}`, {
+      // TODO: Fix backend (Nest.js)
+      const response = await fetch(`${url}/elections`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -122,7 +124,7 @@ export function CreateElection() {
         action: {
           label: "View",
           onClick: () =>
-            window.open(`https://etherscan.io/tx/${tx.hash}`, "_blank"),
+            window.open(`${process.env.NEXT_PUBLIC_POLYGONSCAN_URL}/${tx.hash}`, "_blank"),
         },
       });
 
@@ -138,115 +140,126 @@ export function CreateElection() {
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button>Create Election</Button>
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-[600px]">
-        <DialogHeader>
-          <DialogTitle>Create New Election</DialogTitle>
-        </DialogHeader>
+    <>
+      <WalletConnectButton />
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogTrigger asChild>
+          <Button>Create Election</Button>
+        </DialogTrigger>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>Create New Election</DialogTitle>
+          </DialogHeader>
 
-        <div className="grid gap-4 py-4">
-          {/* Name */}
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="name" className="text-right">
-              Name
-            </Label>
-            <Input
-              id="name"
-              value={formData.name}
-              onChange={(e) =>
-                setFormData({ ...formData, name: e.target.value })
-              }
-              className="col-span-3"
-            />
-          </div>
+          <div className="grid gap-4 py-4">
+            {/* Name */}
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="name" className="text-right">
+                Name
+              </Label>
+              <Input
+                id="name"
+                value={formData.name}
+                onChange={(e) =>
+                  setFormData({ ...formData, name: e.target.value })
+                }
+                className="col-span-3"
+              />
+            </div>
 
-          {/* Description */}
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="description" className="text-right">
-              Description
-            </Label>
-            <Input
-              id="description"
-              value={formData.description}
-              onChange={(e) =>
-                setFormData({ ...formData, description: e.target.value })
-              }
-              className="col-span-3"
-            />
-          </div>
+            {/* Description */}
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="description" className="text-right">
+                Description
+              </Label>
+              <Input
+                id="description"
+                value={formData.description}
+                onChange={(e) =>
+                  setFormData({ ...formData, description: e.target.value })
+                }
+                className="col-span-3"
+              />
+            </div>
 
-          {/* Date Range Picker - Strictly following your pattern */}
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label className="text-right">Election Period</Label>
-            <div className={cn("grid gap-2 col-span-3")}>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    id="date"
-                    variant={"outline"}
-                    className={cn(
-                      "w-full justify-start text-left font-normal",
-                      !dateRange && "text-muted-foreground"
-                    )}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {dateRange?.from ? (
-                      dateRange.to ? (
-                        <>
-                          {format(dateRange.from, "LLL dd, y")} -{" "}
-                          {format(dateRange.to, "LLL dd, y")}
-                        </>
+            {/* Date Range Picker - Strictly following your pattern */}
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label className="text-right">Election Period</Label>
+              <div className={cn("grid gap-2")}>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      id="date"
+                      variant={"outline"}
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !dateRange && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {dateRange?.from ? (
+                        dateRange.to ? (
+                          <>
+                            {format(dateRange.from, "LLL dd, y")} -{" "}
+                            {format(dateRange.to, "LLL dd, y")}
+                          </>
+                        ) : (
+                          format(dateRange.from, "LLL dd, y")
+                        )
                       ) : (
-                        format(dateRange.from, "LLL dd, y")
-                      )
-                    ) : (
-                      <span>Pick a date range</span>
-                    )}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    initialFocus
-                    mode="range"
-                    defaultMonth={dateRange?.from}
-                    selected={dateRange}
-                    onSelect={setDateRange}
-                    numberOfMonths={2}
-                  />
-                </PopoverContent>
-              </Popover>
+                        <span>Pick a date range</span>
+                      )}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      initialFocus
+                      mode="range"
+                      defaultMonth={dateRange?.from || new Date()}
+                      selected={dateRange}
+                      onSelect={(range) => {
+                        console.log("Selected date range:", range);
+                        setDateRange(
+                          range || {
+                            from: new Date(),
+                            to: addDays(new Date(), 7),
+                          }
+                        );
+                      }}
+                      numberOfMonths={2}
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+            </div>
+
+            {/* Voter Addresses */}
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label className="text-right">Voter Addresses</Label>
+              <textarea
+                value={formData.voterAddresses.join("\n")}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    voterAddresses: e.target.value
+                      .split("\n")
+                      .filter((a) => a.trim()),
+                  })
+                }
+                className="col-span-3 border rounded-md p-2 h-32"
+                placeholder="Enter one address per line"
+              />
             </div>
           </div>
 
-          {/* Voter Addresses */}
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label className="text-right">Voter Addresses</Label>
-            <textarea
-              value={formData.voterAddresses.join("\n")}
-              onChange={(e) =>
-                setFormData({
-                  ...formData,
-                  voterAddresses: e.target.value
-                    .split("\n")
-                    .filter((a) => a.trim()),
-                })
-              }
-              className="col-span-3 border rounded-md p-2 h-32"
-              placeholder="Enter one address per line"
-            />
-          </div>
-        </div>
-
-        <Button
-          onClick={handleSubmit}
-          disabled={loading || !dateRange?.from || !dateRange.to}
-        >
-          {loading ? "Creating..." : "Create Election"}
-        </Button>
-      </DialogContent>
-    </Dialog>
+          <Button
+            onClick={handleSubmit}
+            disabled={loading || !dateRange?.from || !dateRange.to}
+          >
+            {loading ? "Creating..." : "Create Election"}
+          </Button>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

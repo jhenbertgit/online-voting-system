@@ -15,6 +15,10 @@ export class CreateElectionDto {
   @IsString()
   description?: string;
 
+  @IsNotEmpty()
+  @IsString()
+  onChainElectionId: string;
+
   @IsDate()
   startDate: Date;
 

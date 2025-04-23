@@ -1,36 +1,55 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+import {
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+  InternalServerErrorException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { Election } from 'database/src/client';
 import { ConfigService } from '@nestjs/config';
 import { CreateElectionDto } from './dto/create-election.dto';
 import { MerkleTree } from 'merkletreejs';
 import { keccak256 } from 'ethers';
-import { keccak256 as keccak256Ethereum } from 'ethereum-cryptography/keccak';
+import { validateSync } from 'class-validator';
+import { plainToInstance } from 'class-transformer';
+
+interface CandidateTree {
+  candidates: string[];
+}
+
+function isCandidateTree(obj: unknown): obj is CandidateTree {
+  return (
+    !!obj &&
+    typeof obj === 'object' &&
+    'candidates' in obj &&
+    Array.isArray((obj as CandidateTree).candidates) &&
+    (obj as CandidateTree).candidates.every(
+      (c: unknown) => typeof c === 'string',
+    )
+  );
+}
 
 @Injectable()
 export class ElectionService {
   private readonly adminUserIds: string[];
 
   constructor(
-    private prisma: PrismaService,
-    private configService: ConfigService,
+    private readonly prisma: PrismaService,
+    private readonly configService: ConfigService,
   ) {
-    this.adminUserIds = (
-      this.configService.get<string>('ADMIN_USER_IDS') || ''
-    ).split(',');
+    const adminIds = this.configService.get<string>('ADMIN_USER_IDS') ?? '';
+    this.adminUserIds = adminIds.split(',').filter(Boolean);
   }
 
   async getElections(): Promise<Election[]> {
     try {
       return await this.prisma.election.findMany({
-        include: {
-          positions: true, // Include positions related to the election
-          votes: true, // Include votes related to the election
-        },
+        include: { positions: true, votes: true },
       });
     } catch (error) {
-      console.error('Error fetching elections:', error);
-      throw new Error('Failed to fetch elections');
+      this.handleDatabaseError(error, 'fetching elections');
     }
   }
 
@@ -38,117 +57,150 @@ export class ElectionService {
     userId: string,
     createElectionDto: CreateElectionDto,
   ): Promise<Election> {
-    // Only admins can create elections
-    if (!this.adminUserIds.includes(userId)) {
-      throw new Error('Unauthorized: Only admins can create elections.');
-    }
+    this.validateUserId(userId);
+    this.validateAdminUser(userId);
+
+    const dtoInstance = plainToInstance(CreateElectionDto, createElectionDto);
+    this.validateDto(dtoInstance);
 
     try {
       return await this.prisma.election.create({
         data: {
-          name: createElectionDto.name,
-          description: createElectionDto.description,
-          startDate: createElectionDto.startDate,
-          endDate: createElectionDto.endDate,
-          merkleRoot: createElectionDto.merkleRoot,
-          contractAddress: createElectionDto.contractAddress,
-          adminAddress: createElectionDto.adminAddress,
+          name: dtoInstance.name,
+          description: dtoInstance.description,
+          startDate: dtoInstance.startDate,
+          endDate: dtoInstance.endDate,
+          merkleRoot: dtoInstance.merkleRoot,
+          contractAddress: dtoInstance.contractAddress,
+          adminAddress: dtoInstance.adminAddress,
+          onChainElectionId: dtoInstance.onChainElectionId,
         },
       });
     } catch (error) {
-      console.error('Error creating election:', error);
-      throw new Error('Failed to create election');
+      this.handleDatabaseError(error, 'creating election');
     }
   }
 
   async approveElection(id: string, userId: string): Promise<Election> {
-    // Only admins and election officers can approve elections
-    if (!this.adminUserIds.includes(userId)) {
-      throw new Error('Unauthorized: Only admins can approve elections.');
-    }
+    this.validateUserId(userId);
+    this.validateAdminUser(userId);
 
     try {
-      const election = await this.prisma.election.findUnique({
-        where: {
-          id: id,
-        },
-      });
-
-      if (!election) {
-        throw new NotFoundException(`Election with ID ${id} not found`);
-      }
-
       return await this.prisma.election.update({
-        where: {
-          id: id,
-        },
-        data: {
-          // No specific fields to update for approval, but you might want to add an "approved" field
-        },
+        where: { id },
+        data: { approved: true },
       });
     } catch (error) {
-      console.error('Error approving election:', error);
-      throw new Error('Failed to approve election');
+      this.handleDatabaseError(error, 'approving election');
     }
   }
 
   async getProof(params: { electionId: string; commitment: string }) {
+    const election = await this.findElectionById(params.electionId);
+    this.validateCandidateTree(election.candidateTree);
+
+    const candidateTree = this.parseCandidateTree(election.candidateTree);
+    const leaves = this.extractLeaves(candidateTree);
+    const tree = new MerkleTree(leaves, keccak256, { sort: true });
+
+    const leafHash = keccak256(params.commitment);
+    const leafBuffer = Buffer.from(leafHash.slice(2), 'hex');
+
+    return { merkleProof: tree.getHexProof(leafBuffer) };
+  }
+
+  private async findElectionById(id: string): Promise<Election> {
     const election = await this.prisma.election.findUnique({
-      where: { id: params.electionId },
+      where: { id },
       select: {
-        candidateTree: true, // Ensure you have the candidateTree
-        merkleRoot: true, // Ensure you have merkleRoot
+        id: true,
+        name: true,
+        description: true,
+        startDate: true,
+        endDate: true,
+        approved: true,
+        merkleRoot: true,
+        onChainElectionId: true,
+        createdAt: true,
+        contractAddress: true,
+        adminAddress: true,
+        candidateTree: true,
       },
     });
 
     if (!election) {
-      throw new NotFoundException(
-        `Election with ID ${params.electionId} not found`,
-      );
+      throw new NotFoundException(`Election with ID ${id} not found`);
     }
-
-    if (!election.candidateTree) {
-      throw new NotFoundException(
-        `Candidate tree not found for election ID ${params.electionId}`,
-      );
-    }
-
-    // 1. Extract leaves from candidateTree (adjust according to its actual structure)
-    const leaves = this.extractLeaves(election.candidateTree);
-
-    // 2. Rebuild the Merkle Tree
-    const tree = new MerkleTree(leaves, keccak256Ethereum, { sort: true });
-
-    // 3. Generate the Merkle Proof
-    const leaf = keccak256(params.commitment); // Hash the commitment
-    const proof = tree.getHexProof(leaf); // Get the proof
-
-    return {
-      merkleProof: proof,
-    };
+    return election;
   }
 
-  private extractLeaves(candidateTree: any): Buffer[] {
-    if (!candidateTree || typeof candidateTree !== 'object') {
-      throw new Error('Invalid candidate tree format: must be a JSON object');
+  private validateUserId(userId: string): void {
+    if (typeof userId !== 'string' || !userId.trim()) {
+      throw new BadRequestException('Invalid user ID format');
     }
+  }
 
-    if (!candidateTree.candidates || !Array.isArray(candidateTree.candidates)) {
-      throw new Error(
-        'Invalid candidate tree format: must have a "candidates" array',
+  private validateAdminUser(userId: string): void {
+    if (!this.adminUserIds.includes(userId)) {
+      throw new UnauthorizedException(
+        'Insufficient privileges for this operation',
       );
     }
+  }
 
-    try {
-      return candidateTree.candidates.map((candidateId) => {
-        if (typeof candidateId !== 'string') {
-          throw new Error('Candidate IDs must be strings');
-        }
-        const hash = keccak256(candidateId);
-        return Buffer.from(hash, 'hex');
-      });
-    } catch (error) {
-      throw new Error(`Error extracting leaves: ${error.message}`);
+  private validateDto(dto: CreateElectionDto): void {
+    const errors = validateSync(dto);
+    if (errors.length > 0) {
+      const message = errors
+        .flatMap((e) => Object.values(e.constraints ?? {}))
+        .join('; ');
+      throw new BadRequestException(`Invalid request: ${message}`);
     }
+  }
+
+  private parseCandidateTree(candidateTree: unknown): CandidateTree {
+    try {
+      const parsed =
+        typeof candidateTree === 'string'
+          ? JSON.parse(candidateTree)
+          : candidateTree;
+
+      if (!isCandidateTree(parsed)) {
+        throw new Error('Invalid candidate tree structure');
+      }
+      return parsed;
+    } catch (error) {
+      throw new InternalServerErrorException(
+        'Malformed candidate tree data in database',
+        { cause: error },
+      );
+    }
+  }
+
+  private validateCandidateTree(
+    candidateTree: unknown,
+  ): asserts candidateTree is string | CandidateTree {
+    if (!candidateTree) {
+      throw new NotFoundException('Candidate tree data not available');
+    }
+  }
+
+  private extractLeaves(candidateTree: CandidateTree): Buffer[] {
+    return candidateTree.candidates.map((candidateId) => {
+      if (typeof candidateId !== 'string') {
+        throw new InternalServerErrorException('Invalid candidate ID type');
+      }
+      const hash = keccak256(candidateId);
+      return Buffer.from(hash.slice(2), 'hex');
+    });
+  }
+
+  private handleDatabaseError(error: unknown, context: string): never {
+    const errorMessage =
+      error instanceof Error ? error.message : 'Unknown database error';
+    console.error(`Error ${context}:`, error);
+    throw new InternalServerErrorException(
+      `Failed ${context}: ${errorMessage}`,
+    );
   }
 }

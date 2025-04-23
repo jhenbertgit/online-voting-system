@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Injectable, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { ethers } from 'ethers';
@@ -75,10 +76,10 @@ export class BallotService {
       });
 
       // 5. Post-creation validation
-      if (vote.election.chainId) {
+      if (vote.election.onChainElectionId) {
         const chainVote = await this.contract.queryFilter(
           this.contract.filters.VoteCast(
-            vote.election.chainId,
+            vote.election.onChainElectionId,
             vote.voterCommitment,
           ),
         );

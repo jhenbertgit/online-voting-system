@@ -11,13 +11,16 @@ import { MiddlewareConsumer, NestModule } from '@nestjs/common';
 @Module({
   imports: [PrismaModule, AuthModule],
   controllers: [BallotController],
-  providers: [BallotService, RedisService, SessionCacheService, RateLimiterMiddleware],
+  providers: [
+    BallotService,
+    RedisService,
+    SessionCacheService,
+    RateLimiterMiddleware,
+  ],
   exports: [BallotService, RedisService, SessionCacheService],
 })
 export class BallotModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
-    consumer
-      .apply(RateLimiterMiddleware)
-      .forRoutes('ballot');
+    consumer.apply(RateLimiterMiddleware).forRoutes('ballot');
   }
 }
