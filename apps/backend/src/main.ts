@@ -2,11 +2,14 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { clerkMiddleware } from '@clerk/express';
 import { ValidationPipe } from '@nestjs/common';
-import { RateLimiterMiddleware } from './middleware';
-import { RedisService } from './redis';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+
+  app.enableCors({
+    origin: 'http://localhost:3000', // or true for all origins, or an array of allowed origins
+    credentials: true, // if you use cookies/auth
+  });
 
   app.setGlobalPrefix('api');
 
@@ -21,10 +24,7 @@ async function bootstrap() {
     }),
   );
 
-  // Rate limiting middleware for /ballot POST (votes)
-  const redisService = app.get(RedisService);
-  app.use('/api/ballot', new RateLimiterMiddleware(redisService).use);
-
   await app.listen(process.env.PORT ?? 5000);
 }
+
 bootstrap();

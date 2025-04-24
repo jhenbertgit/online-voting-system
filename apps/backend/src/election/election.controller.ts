@@ -11,7 +11,7 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { UserRole } from '../auth/types';
 import { ElectionService } from './election.service';
 import { CreateElectionDto } from './dto/create-election.dto';
-import { ClerkAuthGuard } from '../auth/clerk-auth.guard';
+import { ClerkAuthGuard } from '../auth/guards/clerk-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 
 @Controller('elections')

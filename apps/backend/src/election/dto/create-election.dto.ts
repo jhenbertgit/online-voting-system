@@ -5,7 +5,9 @@ import {
   IsEthereumAddress,
   IsHexadecimal,
   Length,
+  IsOptional,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class CreateElectionDto {
   @IsString()
@@ -13,6 +15,7 @@ export class CreateElectionDto {
   name: string;
 
   @IsString()
+  @IsOptional()
   description?: string;
 
   @IsNotEmpty()
@@ -20,13 +23,15 @@ export class CreateElectionDto {
   onChainElectionId: string;
 
   @IsDate()
+  @Type(() => Date)
   startDate: Date;
 
   @IsDate()
+  @Type(() => Date)
   endDate: Date;
 
   @IsHexadecimal()
-  @Length(32, 32)
+  @Length(66, 66) // 0x prefix + 64 hex characters
   merkleRoot: string;
 
   @IsEthereumAddress()

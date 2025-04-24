@@ -24,9 +24,9 @@ export class RateLimiterMiddleware implements NestMiddleware {
   async use(req: Request, res: Response, next: NextFunction) {
     const ip = req.ip || req.socket.remoteAddress || 'unknown';
     try {
-      await this.getLimiter().consume(ip as string);
+      await this.getLimiter().consume(ip);
       next();
-    } catch (rejRes) {
+    } catch {
       res.status(429).json({
         message: 'Too many votes. Please try again later.',
       });

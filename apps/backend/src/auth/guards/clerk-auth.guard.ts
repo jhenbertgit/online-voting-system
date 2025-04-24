@@ -19,6 +19,13 @@ export class ClerkAuthGuard implements CanActivate {
       throw new UnauthorizedException('Authentication required');
     }
 
+    // Attach user object for downstream guards/controllers
+    req.user = {
+      id: req.auth.userId,
+      role: (req.auth as any)?.role,
+      sessionId: (req.auth as any)?.sessionId,
+      metadata: (req.auth as any)?.metadata ?? {},
+    };
     return true; // User is authenticated
   }
 }

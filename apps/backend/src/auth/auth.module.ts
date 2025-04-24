@@ -1,6 +1,6 @@
 import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
-import { ClerkAuthGuard } from './clerk-auth.guard';
+import { ClerkAuthGuard } from './guards/clerk-auth.guard';
 import { RolesGuard } from './guards/roles.guard';
 import { ClerkService } from './clerk.service';
 import { HttpModule } from '@nestjs/axios';

@@ -8,8 +8,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { Request } from 'express';
-import { ClerkAuthGuard } from '../auth/clerk-auth.guard';
-import { PrismaService } from '../prisma/prisma.service';
+import { ClerkAuthGuard } from '../auth/guards/clerk-auth.guard';
 import { SubmitVoteDto } from './dto/submit-vote.dto';
 import { getAuth } from '@clerk/express';
 import { TxWebhookDto } from './dto/tx-webhook.dto';
@@ -17,10 +16,7 @@ import { BallotService } from './ballot.service';
 
 @Controller('ballot')
 export class BallotController {
-  constructor(
-    private readonly prisma: PrismaService,
-    private readonly ballotService: BallotService,
-  ) {}
+  constructor(private readonly ballotService: BallotService) {}
 
   @Post()
   @UseGuards(ClerkAuthGuard)

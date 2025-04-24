@@ -29,6 +29,8 @@ import {
 } from "@/components/ui/popover";
 import { DatePickerWithRange } from "./DatePickerWithRange";
 import { WalletConnectButton } from "./WalletConnectButton";
+import { useAuth } from "@clerk/nextjs";
+import { get } from "http";
 
 export function CreateElection() {
   const config = useConfig();
@@ -51,11 +53,15 @@ export function CreateElection() {
 
   const url = process.env.NEXT_PUBLIC_API_BASE_URL;
 
+  const { getToken } = useAuth();
+
   const handleSubmit = async () => {
     try {
       if (!dateRange?.from || !dateRange.to) {
         throw new Error("Please select a valid date range");
       }
+
+      const clerkToken = await getToken();
 
       setLoading(true);
       const toastId = toast.loading("Creating election...");
@@ -68,9 +74,9 @@ export function CreateElection() {
       }
 
       // 2. Generate Merkle tree
-      const { merkleRoot, merkleTree } = generateMerkleTree(
-        formData.voterAddresses
-      );
+      const { merkleRoot } = generateMerkleTree(formData.voterAddresses);
+      // Ensure merkleRoot has 0x prefix
+      const formattedMerkleRoot = merkleRoot.startsWith('0x') ? merkleRoot : `0x${merkleRoot}`;
 
       // 3. Prepare contract
       const contract = new ethers.Contract(
@@ -89,7 +95,7 @@ export function CreateElection() {
         formData.name,
         startTime,
         endTime,
-        merkleRoot
+        formattedMerkleRoot
       );
 
       toast.loading(`Transaction submitted: ${tx.hash.slice(0, 10)}...`, {
@@ -99,24 +105,28 @@ export function CreateElection() {
       const receipt = await tx.wait();
 
       // 6. Store in backend
-      // TODO: Fix backend (Nest.js)
       const response = await fetch(`${url}/elections`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${clerkToken}`,
+        },
         body: JSON.stringify({
-          ...formData,
-          startDate: dateRange.from,
-          endDate: dateRange.to,
-          merkleRoot,
+          name: formData.name,
+          description: formData.description,
+          startDate: dateRange.from.toISOString(),
+          endDate: dateRange.to.toISOString(),
+          merkleRoot: formattedMerkleRoot,
           contractAddress: process.env.NEXT_PUBLIC_CONTRACT_ADDRESS,
           adminAddress: address,
-          chainId: ethers.id(formData.name),
-          txHash: tx.hash,
-          merkleTree: JSON.stringify(merkleTree),
+          onChainElectionId: ethers.id(formData.name),
         }),
       });
 
-      if (!response.ok) throw new Error("Backend submission failed");
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Backend submission failed");
+      }
 
       toast.success(`Election created successfully!`, {
         id: toastId,
@@ -124,12 +134,16 @@ export function CreateElection() {
         action: {
           label: "View",
           onClick: () =>
-            window.open(`${process.env.NEXT_PUBLIC_POLYGONSCAN_URL}/${tx.hash}`, "_blank"),
+            window.open(
+              `${process.env.NEXT_PUBLIC_POLYGONSCAN_URL}/${tx.hash}`,
+              "_blank"
+            ),
         },
       });
 
       setOpen(false);
     } catch (error) {
+      console.log("Error", (error as Error).message)
       toast.error("Failed to create election", {
         description:
           error instanceof Error ? error.message : "Unknown error occurred",

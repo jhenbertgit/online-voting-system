@@ -3,14 +3,18 @@ import {
   ExecutionContext,
   ForbiddenException,
   Injectable,
+  Logger,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { ROLES_KEY } from '../decorators/roles.decorator';
 import { UserRole, RoleHierarchy } from '../types';
 import { ClerkService } from '../clerk.service';
+import { Request } from 'express';
 
 @Injectable()
 export class RolesGuard implements CanActivate {
+  private readonly logger = new Logger(RolesGuard.name);
+
   constructor(
     private reflector: Reflector,
     private clerkService: ClerkService,
@@ -26,27 +30,42 @@ export class RolesGuard implements CanActivate {
       return true; // No roles required, access granted
     }
 
-    const request = context.switchToHttp().getRequest();
+    const request = context.switchToHttp().getRequest<Request>();
     const user = request.user;
 
-    if (!user) {
+    if (!user?.id) {
+      this.logger.warn('User not found in request - Authentication required');
       throw new ForbiddenException('User not authenticated');
     }
 
     try {
       const userRole = await this.clerkService.getUserRole(user.id);
-
-      if (!(userRole in UserRole)) {
+      
+      // Check if the role is a valid UserRole value
+      const isValidRole = Object.values(UserRole).includes(userRole as UserRole);
+      
+      if (!isValidRole) {
+        this.logger.warn(`Invalid role found for user ${user.id}: ${userRole}`);
         throw new ForbiddenException('Invalid role');
       }
 
-      return requiredRoles.some(
+      const hasRequiredRole = requiredRoles.some(
         (role) => RoleHierarchy[userRole as UserRole] >= RoleHierarchy[role],
       );
+
+      if (!hasRequiredRole) {
+        this.logger.warn(
+          `User ${user.id} with role ${userRole} attempted to access route requiring ${requiredRoles.join(
+            ', ',
+          )}`,
+        );
+        throw new ForbiddenException('Insufficient permissions');
+      }
+
+      return true;
     } catch (error) {
-      // Log the error for debugging purposes
-      console.error('Error fetching user role:', error);
-      return false; // Deny access in case of an error
+      this.logger.error(`Error in role check for user ${user.id}:`, error);
+      throw new ForbiddenException('Error checking user role');
     }
   }
 }
