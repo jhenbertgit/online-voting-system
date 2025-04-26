@@ -6,6 +6,9 @@ import { AuthModule } from './auth/auth.module';
 import { ElectionModule } from './election/election.module';
 import { RedisModule } from './redis/redis.module';
 import { SessionCacheService } from './services';
+import { PositionModule } from './position/position.module';
+import { WebhookModule } from './webhook/webhook.module';
+import { CandidateModule } from './candidate/candidate.module';
 
 @Module({
   imports: [
@@ -17,6 +20,9 @@ import { SessionCacheService } from './services';
     AuthModule,
     ElectionModule,
     RedisModule,
+    PositionModule,
+    WebhookModule,
+    CandidateModule,
   ],
   providers: [SessionCacheService],
   exports: [SessionCacheService],

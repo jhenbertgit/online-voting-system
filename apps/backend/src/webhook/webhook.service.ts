@@ -4,10 +4,11 @@ import { User } from 'database/src/client';
 import { ConfigService } from '@nestjs/config';
 import { Webhook } from 'svix';
 import { WebhookEvent } from '@clerk/express';
+import { WebhookEventDto } from './dto/webhook-event.dto';
 
 @Injectable()
 export class WebhookService {
-  private readonly logger = new Logger(WebhookService.name);
+  public readonly logger = new Logger(WebhookService.name);
   private readonly svixClient: Webhook;
 
   constructor(
@@ -41,7 +42,9 @@ export class WebhookService {
         'svix-signature': svixSignature,
       }) as WebhookEvent;
     } catch (err) {
-      this.logger.error(`Webhook verification failed: ${err.message}`);
+      this.logger.error(
+        `Webhook verification failed: ${(err as Error).message}`,
+      );
       return null;
     }
   }
@@ -49,32 +52,36 @@ export class WebhookService {
   async processWebhook(event: WebhookEvent): Promise<User | void> {
     switch (event.type) {
       case 'user.created':
-        return this.handleUserCreated(event.data);
+        return this.handleUserCreated(event.data as WebhookEventDto);
       case 'user.updated':
-        return this.handleUserUpdated(event.data);
-      case 'user.deleted':
-        return this.handleUserDeleted(event.data);
+        return this.handleUserUpdated(event.data as WebhookEventDto);
+      case 'user.deleted': {
+        // For deleted events, allow partial data (only id is required)
+        const { id } = event.data as { id: string };
+        if (!id) {
+          this.logger.error('Webhook data for deletion missing id');
+          throw new Error('Webhook data for deletion missing id');
+        }
+        return this.handleUserDeleted({ id } as WebhookEventDto);
+      }
       default:
         this.logger.warn(`Unhandled event type: ${event.type}`);
     }
   }
 
-  private async handleUserCreated(data: WebhookEvent['data']): Promise<User> {
+  private async handleUserCreated(data: WebhookEventDto): Promise<User> {
     try {
-      if (
-        !('email_addresses' in data) ||
-        !Array.isArray((data as any).email_addresses)
-      ) {
+      if (!data.email_addresses || !Array.isArray(data.email_addresses)) {
         throw new Error('Webhook data does not contain email_addresses');
       }
-      const { id: clerkUserId, email_addresses, ...rest } = data as any;
+      const { id: clerkUserId, email_addresses, ...rest } = data;
       const email = email_addresses[0].email_address;
 
       return await this.prisma.user.create({
         data: {
           clerkUserId,
           email,
-          // Add other fields from `rest` as needed
+          ...rest,
         },
       });
     } catch (error) {
@@ -83,23 +90,19 @@ export class WebhookService {
     }
   }
 
-  private async handleUserUpdated(data: WebhookEvent['data']): Promise<User> {
+  private async handleUserUpdated(data: WebhookEventDto): Promise<User> {
     try {
-      // Type guard: check if email_addresses exists before destructuring
-      if (
-        !('email_addresses' in data) ||
-        !Array.isArray((data as any).email_addresses)
-      ) {
+      if (!data.email_addresses || !Array.isArray(data.email_addresses)) {
         throw new Error('Webhook data does not contain email_addresses');
       }
-      const { id: clerkUserId, email_addresses, ...rest } = data as any;
+      const { id: clerkUserId, email_addresses, ...rest } = data;
       const email = email_addresses[0].email_address;
 
       return await this.prisma.user.update({
         where: { clerkUserId },
         data: {
           email,
-          // Update other fields from `rest` as needed
+          ...rest,
         },
       });
     } catch (error) {
@@ -108,7 +111,7 @@ export class WebhookService {
     }
   }
 
-  private async handleUserDeleted(data: WebhookEvent['data']): Promise<void> {
+  private async handleUserDeleted(data: Partial<WebhookEventDto>): Promise<void> {
     try {
       const { id: clerkUserId } = data;
       await this.prisma.user.delete({ where: { clerkUserId } });
@@ -119,6 +122,6 @@ export class WebhookService {
   }
 
   test() {
-    return 'test';
+    return 'test connection established';
   }
 }

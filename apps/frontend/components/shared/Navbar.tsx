@@ -7,6 +7,7 @@ import { X, Menu } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
+import { WalletConnectButton } from "./WalletConnectButton";
 
 export default function Navbar() {
   const pathname = usePathname();
@@ -123,7 +124,7 @@ export default function Navbar() {
                 </SignedOut>
 
                 <SignedIn>
-                  <UserButton afterSwitchSessionUrl="/" showName />
+                  <UserButton afterSwitchSessionUrl="/" />
                 </SignedIn>
               </div>
             </div>

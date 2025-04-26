@@ -46,7 +46,7 @@ export class ElectionService {
   async getElections(): Promise<Election[]> {
     try {
       return await this.prisma.election.findMany({
-        include: { positions: true, votes: true },
+        include: { positions: true, votes: true, candidates: true },
       });
     } catch (error) {
       this.handleDatabaseError(error, 'fetching elections');

@@ -1,7 +1,7 @@
 import { Label } from "@/components/ui/label";
 import { RadioGroupItem } from "@/components/ui/radio-group";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Candidate } from "./types";
+import { Candidate } from "database/src/client/client";
 import { Check } from "lucide-react";
 
 export default function BallotItem({ candidate }: { candidate: Candidate }) {
@@ -24,7 +24,7 @@ export default function BallotItem({ candidate }: { candidate: Candidate }) {
       >
         <Avatar className="h-12 w-12 flex-shrink-0">
           <AvatarImage
-            src={candidate.avatar}
+            src={candidate.avatar || ""}
             alt={`${candidate.name}'s profile picture`}
           />
           <AvatarFallback className="bg-muted">
@@ -45,20 +45,6 @@ export default function BallotItem({ candidate }: { candidate: Candidate }) {
               {candidate.bio}
             </p>
           )}
-
-          {candidate.policies?.length ? (
-            <ul className="mt-2 space-y-1">
-              {candidate.policies.map((policy) => (
-                <li
-                  key={policy}
-                  className="text-xs flex items-start gap-1.5 text-muted-foreground"
-                >
-                  <span className="mt-0.5">•</span>
-                  <span>{policy}</span>
-                </li>
-              ))}
-            </ul>
-          ) : null}
         </div>
       </Label>
     </div>

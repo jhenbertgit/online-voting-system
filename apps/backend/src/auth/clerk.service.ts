@@ -31,7 +31,9 @@ export class ClerkService {
       }
 
       // If no valid role is found, return the default role
-      this.logger.warn(`No valid role found for user ${userId}, defaulting to ${UserRole.VOTER}`);
+      this.logger.warn(
+        `No valid role found for user ${userId}, defaulting to ${UserRole.VOTER}`,
+      );
       return UserRole.VOTER;
     } catch (error) {
       this.logger.error(`Error getting role for user ${userId}:`, error);

@@ -26,11 +26,11 @@ model User {
 model Election {
   id                String     @id @default(uuid())
   name              String
-  description       String?
+  description       String?    @db.Text
   startDate         DateTime
   endDate           DateTime
   approved          Boolean    @default(false)
-  merkleRoot        String     @unique // bytes32 hex string from contract
+  merkleRoot        String     @unique // hex string from contract
   onChainElectionId String?    @unique // On-chain election ID (uint256)
   positions         Position[]
   votes             Vote[]
@@ -40,7 +40,7 @@ model Election {
   contractAddress String // VotingGuardian contract address
   adminAddress    String // Election admin wallet address
   candidateTree   Json? // Merkle tree structure for candidates
-  Candidate       Candidate[]
+  candidates      Candidate[]
 
   @@index([startDate])
   @@index([endDate])
@@ -48,18 +48,21 @@ model Election {
 }
 
 model Position {
-  id         String      @id @default(uuid())
-  name       String
-  election   Election    @relation(fields: [electionId], references: [id])
-  electionId String
-  candidates Candidate[]
-  votes      Vote[]
+  id          String      @id @default(uuid())
+  name        String
+  description String?     @db.Text
+  election    Election    @relation(fields: [electionId], references: [id])
+  electionId  String
+  candidates  Candidate[]
+  votes       Vote[]
 }
 
 model Candidate {
   id         String   @id @default(uuid())
   name       String
-  bio        String?
+  bio        String?  @db.Text
+  party      String?
+  avatar     String?
   idHash     String   @unique // keccak256(candidateId) for blockchain
   position   Position @relation(fields: [positionId], references: [id])
   positionId String
@@ -67,7 +70,7 @@ model Candidate {
   electionId String
   votes      Vote[]
 
-  @@index([idHash, positionId])
+  @@index([idHash, positionId, electionId])
 }
 
 model Vote {

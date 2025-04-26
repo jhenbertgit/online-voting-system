@@ -5,18 +5,26 @@ import { Button } from "@/components/ui/button";
 import { RadioGroup } from "@/components/ui/radio-group";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Lock } from "lucide-react";
-import { getCandidates } from "@/lib/candidates";
-import { PositionSlug } from "./types";
+import { Candidate } from "database/src/client/client";
 import { ethers } from "ethers";
-import { useAuth, useClerk } from "@clerk/nextjs";
+import { useAuth } from "@clerk/nextjs";
+import { VotingGuardianABI } from "@/abis";
+import { getEthersSigner } from "@/lib/web3-utils";
+import { toast } from "sonner";
 import BallotItem from "./BallotItem";
-import { VotingGuardianABI } from "@/lib/constants";
+import { useConfig } from "wagmi";
 
-export default function BallotForm({ position }: { position: string }) {
+interface BallotFormProps {
+  candidates: Candidate[];
+}
+
+export default function BallotForm({ candidates }: BallotFormProps) {
   const [selectedCandidate, setSelectedCandidate] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-
+  const config = useConfig();
   const formData = new FormData();
+  const { getToken } = useAuth();
+  const url = process.env.NEXT_PUBLIC_API_BASE_URL;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,12 +37,12 @@ export default function BallotForm({ position }: { position: string }) {
 
       // 2. Generate voter commitment (hash of user ID + secret salt)
       const secretSalt =
-        localStorage.getItem("voteSalt") || utils.id(Date.now().toString());
-      const voterCommitment = utils.keccak256(
-        utils.defaultAbiCoder.encode(
-          ["string", "bytes32"],
-          [userId, secretSalt]
-        )
+        localStorage.getItem("voteSalt") || ethers.id(Date.now().toString());
+
+      const abiCoder = ethers.AbiCoder.defaultAbiCoder();
+
+      const voterCommitment = ethers.keccak256(
+        abiCoder.encode(["string", "bytes32"], [userId, secretSalt])
       );
 
       // 3. Store salt if new
@@ -43,22 +51,26 @@ export default function BallotForm({ position }: { position: string }) {
       }
 
       // 4. Prepare candidate hash (match contract's bytes32 idHash)
-      const candidateHash = utils.keccak256(
-        utils.toUtf8Bytes(formData.get("candidate"))
+      const candidateHash = ethers.keccak256(
+        ethers.toUtf8Bytes(formData.get("candidate") as string)
       );
 
       // 5. Get Merkle proof from API
       const proofRes = await fetch(
-        `/api/elections/${formData.get("electionId")}/proof/${voterCommitment}`
+        `${url}/elections/${formData.get("electionId")}/proof/${voterCommitment}`
       );
       const { merkleProof } = await proofRes.json();
 
       // 6. Submit to blockchain
-      const provider = new ethers.BrowserProvider(window.ethereum!);
-      const signer = await provider.getSigner();
+      const signer = await getEthersSigner(config);
+      if (!signer) {
+        toast.error("No signer available");
+        return;
+      }
+
       const contract = new ethers.Contract(
         process.env.NEXT_PUBLIC_CONTRACT_ADDRESS!,
-        (await VotingGuardianABI), // Make sure ABI matches your contract
+        VotingGuardianABI, // Make sure ABI matches your contract
         signer
       );
 
@@ -79,11 +91,12 @@ export default function BallotForm({ position }: { position: string }) {
       if (!voteRecorded) throw new Error("Vote not recorded on-chain");
 
       // 8. Store in backend
+      const clerkToken = await getToken();
       await fetch("/api/ballot", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${await useClerk().getToken()}`,
+          Authorization: `Bearer ${clerkToken}`,
         },
         body: JSON.stringify({
           electionId: formData.get("electionId"),
@@ -104,8 +117,6 @@ export default function BallotForm({ position }: { position: string }) {
       setIsSubmitting(false);
     }
   };
-
-  const candidates = getCandidates(position as PositionSlug);
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">

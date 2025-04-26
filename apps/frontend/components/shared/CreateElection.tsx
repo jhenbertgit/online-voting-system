@@ -2,13 +2,6 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
@@ -22,15 +15,21 @@ import { CalendarIcon } from "lucide-react";
 import { DateRange } from "react-day-picker";
 import { cn } from "@/lib/utils";
 import { Calendar } from "@/components/ui/calendar";
+import { DatePickerWithRange } from "./DatePickerWithRange";
+import { useAuth } from "@clerk/nextjs";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { DatePickerWithRange } from "./DatePickerWithRange";
 import { WalletConnectButton } from "./WalletConnectButton";
-import { useAuth } from "@clerk/nextjs";
-import { get } from "http";
 
 export function CreateElection() {
   const config = useConfig();
@@ -76,7 +75,9 @@ export function CreateElection() {
       // 2. Generate Merkle tree
       const { merkleRoot } = generateMerkleTree(formData.voterAddresses);
       // Ensure merkleRoot has 0x prefix
-      const formattedMerkleRoot = merkleRoot.startsWith('0x') ? merkleRoot : `0x${merkleRoot}`;
+      const formattedMerkleRoot = merkleRoot.startsWith("0x")
+        ? merkleRoot
+        : `0x${merkleRoot}`;
 
       // 3. Prepare contract
       const contract = new ethers.Contract(
@@ -143,7 +144,7 @@ export function CreateElection() {
 
       setOpen(false);
     } catch (error) {
-      console.log("Error", (error as Error).message)
+      console.log("Error", (error as Error).message);
       toast.error("Failed to create election", {
         description:
           error instanceof Error ? error.message : "Unknown error occurred",

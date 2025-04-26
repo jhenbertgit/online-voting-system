@@ -13,24 +13,34 @@ import { SubmitVoteDto } from './dto/submit-vote.dto';
 import { getAuth } from '@clerk/express';
 import { TxWebhookDto } from './dto/tx-webhook.dto';
 import { BallotService } from './ballot.service';
+import { ApiTags, ApiOperation, ApiResponse, ApiBody, ApiParam } from '@nestjs/swagger';
 
+@ApiTags('ballot')
 @Controller('ballot')
 export class BallotController {
   constructor(private readonly ballotService: BallotService) {}
 
   @Post()
   @UseGuards(ClerkAuthGuard)
-  async submitVote(@Body() dto: SubmitVoteDto) {
-    return this.ballotService.submitVote(dto);
+  @ApiOperation({ summary: 'Submit a vote' })
+  @ApiBody({ type: SubmitVoteDto })
+  @ApiResponse({ status: 201, description: 'Vote submitted successfully.' })
+  async submitVote(@Body() submitVoteDto: SubmitVoteDto) {
+    return this.ballotService.submitVote(submitVoteDto);
   }
 
   @Post('webhook/tx-confirm')
-  async handleTxConfirmation(@Body() body: TxWebhookDto) {
-    return this.ballotService.handleTxConfirmation(body);
+  @ApiOperation({ summary: 'Handle transaction confirmation webhook' })
+  @ApiBody({ type: TxWebhookDto })
+  @ApiResponse({ status: 200, description: 'Transaction confirmation webhook processed.' })
+  async handleTxConfirmation(@Body() txWebhookDto: TxWebhookDto) {
+    return this.ballotService.handleTxConfirmation(txWebhookDto);
   }
 
   @Get()
   @UseGuards(ClerkAuthGuard)
+  @ApiOperation({ summary: 'Get ballot' })
+  @ApiResponse({ status: 200, description: 'Ballot retrieved successfully.' })
   async getBallot(@Req() req: Request) {
     const { userId } = getAuth(req);
 
