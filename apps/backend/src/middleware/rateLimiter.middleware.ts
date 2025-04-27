@@ -7,12 +7,14 @@ import { RedisService } from '../redis';
 export class RateLimiterMiddleware implements NestMiddleware {
   private rateLimiter: RateLimiterRedis;
 
-  constructor(private readonly redisService: RedisService) {}
+  constructor(private readonly redisService: RedisService) {
+    RedisService.registerUsage('RateLimiterMiddleware');
+  }
 
   private getLimiter() {
     if (!this.rateLimiter) {
       this.rateLimiter = new RateLimiterRedis({
-        storeClient: this.redisService.getClient(),
+        storeClient: this.redisService.getClient('RateLimiterMiddleware'),
         keyPrefix: 'rlflx',
         points: 5, // 5 votes
         duration: 60, // per minute

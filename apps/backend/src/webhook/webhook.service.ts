@@ -1,14 +1,15 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { User } from 'database/src/client';
 import { ConfigService } from '@nestjs/config';
 import { Webhook } from 'svix';
 import { WebhookEvent } from '@clerk/express';
 import { WebhookEventDto } from './dto/webhook-event.dto';
+import { LoggerService } from '../services/logger.service';
 
 @Injectable()
 export class WebhookService {
-  public readonly logger = new Logger(WebhookService.name);
+  public readonly logger = new LoggerService(WebhookService.name);
   private readonly svixClient: Webhook;
 
   constructor(

@@ -3,17 +3,17 @@ import {
   ExecutionContext,
   ForbiddenException,
   Injectable,
-  Logger,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { ROLES_KEY } from '../decorators/roles.decorator';
 import { UserRole, RoleHierarchy } from '../types';
 import { ClerkService } from '../clerk.service';
 import { Request } from 'express';
+import { LoggerService } from '../../services';
 
 @Injectable()
 export class RolesGuard implements CanActivate {
-  private readonly logger = new Logger(RolesGuard.name);
+  private readonly logger = new LoggerService(RolesGuard.name);
 
   constructor(
     private reflector: Reflector,
@@ -40,10 +40,12 @@ export class RolesGuard implements CanActivate {
 
     try {
       const userRole = await this.clerkService.getUserRole(user.id);
-      
+
       // Check if the role is a valid UserRole value
-      const isValidRole = Object.values(UserRole).includes(userRole as UserRole);
-      
+      const isValidRole = Object.values(UserRole).includes(
+        userRole as UserRole,
+      );
+
       if (!isValidRole) {
         this.logger.warn(`Invalid role found for user ${user.id}: ${userRole}`);
         throw new ForbiddenException('Invalid role');
@@ -64,7 +66,7 @@ export class RolesGuard implements CanActivate {
 
       return true;
     } catch (error) {
-      this.logger.error(`Error in role check for user ${user.id}:`, error);
+      this.logger.error(`Error in role check for user ${user.id}: ${error}`);
       throw new ForbiddenException('Error checking user role');
     }
   }

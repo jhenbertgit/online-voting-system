@@ -8,9 +8,8 @@ export class CandidateService {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(createCandidateDto: CreateCandidateDto) {
-    const { id, name, bio, idHash, positionId, electionId } =
-      createCandidateDto;
-    if (!id || !name || !bio || !idHash || !positionId || !electionId) {
+    const { name, idHash, positionId, electionId } = createCandidateDto;
+    if (!name || !idHash || !positionId || !electionId) {
       throw new Error('All required fields must be provided');
     }
     return this.prisma.candidate.create({ data: createCandidateDto });
@@ -27,8 +26,8 @@ export class CandidateService {
   }
 
   async update(id: string, updateCandidateDto: UpdateCandidateDto) {
-    const { name, bio, idHash, positionId, electionId } = updateCandidateDto;
-    if (!name || !bio || !idHash || !positionId || !electionId) {
+    const { name, idHash, positionId, electionId } = updateCandidateDto;
+    if (!name || !idHash || !positionId || !electionId) {
       throw new Error('All required fields must be provided');
     }
     return this.prisma.candidate.update({

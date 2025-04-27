@@ -30,7 +30,7 @@ model Election {
   startDate         DateTime
   endDate           DateTime
   approved          Boolean    @default(false)
-  merkleRoot        String     @unique // hex string from contract
+  merkleRoot        String     @unique // allowed voter IDs sync in contract
   onChainElectionId String?    @unique // On-chain election ID (uint256)
   positions         Position[]
   votes             Vote[]
@@ -48,13 +48,17 @@ model Election {
 }
 
 model Position {
-  id          String      @id @default(uuid())
-  name        String
-  description String?     @db.Text
-  election    Election    @relation(fields: [electionId], references: [id])
-  electionId  String
-  candidates  Candidate[]
-  votes       Vote[]
+  id                String      @id @default(uuid())
+  name              String
+  description       String?     @db.Text
+  onChainPositionId String?     @unique // On-chain position ID (uint256)
+  election          Election    @relation(fields: [electionId], references: [id])
+  electionId        String
+  candidates        Candidate[]
+  votes             Vote[]
+
+  @@index([onChainPositionId])
+  @@index([electionId])
 }
 
 model Candidate {

@@ -1,14 +1,16 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { ClerkClient, createClerkClient } from '@clerk/express';
 import { ConfigService } from '@nestjs/config';
 import { UserRole } from './types';
+import { LoggerService } from '../services';
 
 @Injectable()
 export class ClerkService {
-  private readonly logger = new Logger(ClerkService.name);
+  private readonly logger: LoggerService;
   private readonly clerk: ClerkClient;
 
   constructor(private config: ConfigService) {
+    this.logger = new LoggerService(ClerkService.name);
     this.clerk = createClerkClient({
       secretKey: config.get('CLERK_SECRET_KEY'),
     });
@@ -36,7 +38,7 @@ export class ClerkService {
       );
       return UserRole.VOTER;
     } catch (error) {
-      this.logger.error(`Error getting role for user ${userId}:`, error);
+      this.logger.error(`Error getting role for user ${userId}: ${error}`);
       return UserRole.VOTER; // Default to VOTER on error
     }
   }

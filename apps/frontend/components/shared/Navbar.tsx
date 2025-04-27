@@ -7,7 +7,7 @@ import { X, Menu } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
-import { WalletConnectButton } from "./WalletConnectButton";
+import { WalletConnectButton } from "./WalletConnectCard";
 
 export default function Navbar() {
   const pathname = usePathname();

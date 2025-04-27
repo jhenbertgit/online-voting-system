@@ -3,13 +3,13 @@ import {
   ExecutionContext,
   Injectable,
   UnauthorizedException,
-  Logger,
 } from '@nestjs/common';
 import { Request } from 'express';
+import { LoggerService } from '../../services';
 
 @Injectable()
 export class ClerkAuthGuard implements CanActivate {
-  private readonly logger = new Logger(ClerkAuthGuard.name);
+  private readonly logger = new LoggerService(ClerkAuthGuard.name);
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const req = context.switchToHttp().getRequest<Request>();
