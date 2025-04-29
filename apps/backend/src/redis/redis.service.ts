@@ -28,18 +28,31 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
       this.logger.log('Redis client connected successfully');
 
       // Log Redis command execution
-      this.client.on('command', (cmd) => {
-        this.logger.debug(
-          `Redis Command: ${cmd.name} Args: ${JSON.stringify(cmd.args)}`,
-        );
+      this.client.on('command', (...args: unknown[]) => {
+        const cmd = args[0];
+        if (
+          cmd &&
+          typeof cmd === 'object' &&
+          Object.prototype.hasOwnProperty.call(cmd, 'name') &&
+          typeof (cmd as Record<string, unknown>).name === 'string' &&
+          Object.prototype.hasOwnProperty.call(cmd, 'args') &&
+          Array.isArray((cmd as Record<string, unknown>).args)
+        ) {
+          this.logger.debug(
+            `Redis Command: ${((cmd as { name: string }).name)} Args: ${JSON.stringify((cmd as { args: unknown[] }).args)}`,
+          );
+        } else {
+          this.logger.debug(`Redis Command (unknown structure): ${JSON.stringify(cmd)}`);
+        }
       });
 
       // Log Redis error events
-      this.client.on('error', (error) => {
-        this.logger.error(
-          'Redis Error Event',
-          error instanceof Error ? error.stack : undefined,
-        );
+      this.client.on('error', (error: unknown) => {
+        if (error instanceof Error) {
+          this.logger.error('Redis Error Event', error.stack);
+        } else {
+          this.logger.error('Redis Error Event', String(error));
+        }
       });
 
       // Log when Redis is ready to receive commands
@@ -48,8 +61,12 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
       });
 
       // Log reconnecting attempts
-      this.client.on('reconnecting', (time: number) => {
-        this.logger.warn(`Redis reconnecting (delay: ${time}ms)`);
+      this.client.on('reconnecting', (time: unknown) => {
+        if (typeof time === 'number') {
+          this.logger.warn(`Redis reconnecting (delay: ${time}ms)`);
+        } else {
+          this.logger.warn('Redis reconnecting');
+        }
       });
 
       // Log successful reconnection
@@ -68,20 +85,30 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
       });
 
       // Log when Redis server sends a warning
-      this.client.on('warning', (warning) => {
-        this.logger.warn(`Redis server warning: ${warning}`);
+      this.client.on('warning', (warning: unknown) => {
+        this.logger.warn(`Redis server warning: ${String(warning)}`);
       });
 
       // Log subscription messages (Pub/Sub)
-      this.client.on('message', (channel, message) => {
-        this.logger.debug(
-          `Redis Pub/Sub message on channel ${channel}: ${message}`,
-        );
+      this.client.on('message', (...args: unknown[]) => {
+        if (args.length === 2) {
+          const [channel, message] = args;
+          this.logger.debug(
+            `Redis Pub/Sub message on channel ${String(channel)}: ${String(message)}`,
+          );
+        } else {
+          this.logger.debug(`Redis Pub/Sub message: ${JSON.stringify(args)}`);
+        }
       });
-      this.client.on('pmessage', (pattern, channel, message) => {
-        this.logger.debug(
-          `Redis Pub/Sub pmessage on pattern ${pattern}, channel ${channel}: ${message}`,
-        );
+      this.client.on('pmessage', (...args: unknown[]) => {
+        if (args.length === 3) {
+          const [pattern, channel, message] = args;
+          this.logger.debug(
+            `Redis Pub/Sub pmessage on pattern ${String(pattern)}, channel ${String(channel)}: ${String(message)}`,
+          );
+        } else {
+          this.logger.debug(`Redis Pub/Sub pmessage: ${JSON.stringify(args)}`);
+        }
       });
 
       // Dynamically log which services are using RedisService
@@ -98,10 +125,11 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
         }
       }, 500); // Give services a moment to register usage
     } catch (error) {
-      this.logger.error(
-        'Error connecting to Redis',
-        error instanceof Error ? error.stack : undefined,
-      );
+      if (error instanceof Error) {
+        this.logger.error('Error connecting to Redis', error.stack);
+      } else {
+        this.logger.error('Error connecting to Redis', String(error));
+      }
       throw error;
     }
   }
@@ -118,10 +146,11 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
       await this.client.quit();
       this.logger.log('Redis client disconnected successfully');
     } catch (error) {
-      this.logger.error(
-        'Error disconnecting from Redis',
-        error instanceof Error ? error.stack : undefined,
-      );
+      if (error instanceof Error) {
+        this.logger.error('Error disconnecting from Redis', error.stack);
+      } else {
+        this.logger.error('Error disconnecting from Redis', String(error));
+      }
     }
   }
 }

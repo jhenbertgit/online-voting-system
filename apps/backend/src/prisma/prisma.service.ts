@@ -1,34 +1,63 @@
-import { INestApplication, Injectable, OnModuleInit } from '@nestjs/common';
+import {
+  INestApplication,
+  Injectable,
+  OnModuleInit,
+  Logger,
+} from '@nestjs/common';
 import { PrismaClient } from 'database/src/client';
-import { LoggerService } from '../services';
 
 @Injectable()
 export class PrismaService extends PrismaClient implements OnModuleInit {
-  private readonly logger = new LoggerService(PrismaService.name);
+  private readonly logger = new Logger(PrismaService.name);
 
   constructor() {
-    super({
-      log: [
-        { emit: 'event', level: 'query' },
-        { emit: 'event', level: 'info' },
-        { emit: 'event', level: 'warn' },
-        { emit: 'event', level: 'error' },
-      ],
-    });
+    super();
 
-    (this as any).$on('query', (e: any) => {
-      this.logger.debug(
-        `Prisma Query: ${e.query} | Params: ${e.params} | Duration: ${e.duration}ms`,
-      );
+    (this as any).$on(
+      'query',
+      (e: { query: string; params: string; duration: number } | unknown) => {
+        if (
+          e &&
+          typeof e === 'object' &&
+          'query' in e &&
+          'params' in e &&
+          'duration' in e
+        ) {
+          const query = (e as { query: string }).query;
+          const params = (e as { params: string }).params;
+          const duration = (e as { duration: number }).duration;
+          this.logger.debug(
+            `Prisma Query: ${query} | Params: ${params} | Duration: ${duration}ms`,
+          );
+        } else {
+          this.logger.debug(`Query event: ${JSON.stringify(e)}`);
+        }
+      },
+    );
+    (this as any).$on('info', (e: { message: string } | unknown) => {
+      if (e && typeof e === 'object' && 'message' in e) {
+        this.logger.log(`Prisma Info: ${(e as { message: string }).message}`);
+      } else {
+        this.logger.log(`Prisma Info: ${JSON.stringify(e)}`);
+      }
     });
-    (this as any).$on('info', (e: any) => {
-      this.logger.log(`Prisma Info: ${e.message}`);
+    (this as any).$on('warn', (e: { message: string } | unknown) => {
+      if (e && typeof e === 'object' && 'message' in e) {
+        this.logger.warn(
+          `Prisma Warning: ${(e as { message: string }).message}`,
+        );
+      } else {
+        this.logger.warn(`Prisma Warning: ${JSON.stringify(e)}`);
+      }
     });
-    (this as any).$on('warn', (e: any) => {
-      this.logger.warn(`Prisma Warning: ${e.message}`);
-    });
-    (this as any).$on('error', (e: any) => {
-      this.logger.error(`Prisma Error: ${e.message}`);
+    (this as any).$on('error', (e: { message: string } | unknown) => {
+      if (e && typeof e === 'object' && 'message' in e) {
+        this.logger.error(
+          `Prisma Error: ${(e as { message: string }).message}`,
+        );
+      } else {
+        this.logger.error(`Prisma Error: ${JSON.stringify(e)}`);
+      }
     });
   }
 

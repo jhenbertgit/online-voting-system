@@ -42,9 +42,7 @@ export class RolesGuard implements CanActivate {
       const userRole = await this.clerkService.getUserRole(user.id);
 
       // Check if the role is a valid UserRole value
-      const isValidRole = Object.values(UserRole).includes(
-        userRole as UserRole,
-      );
+      const isValidRole = Object.values(UserRole).includes(userRole);
 
       if (!isValidRole) {
         this.logger.warn(`Invalid role found for user ${user.id}: ${userRole}`);
@@ -52,7 +50,7 @@ export class RolesGuard implements CanActivate {
       }
 
       const hasRequiredRole = requiredRoles.some(
-        (role) => RoleHierarchy[userRole as UserRole] >= RoleHierarchy[role],
+        (role) => RoleHierarchy[userRole] >= RoleHierarchy[role],
       );
 
       if (!hasRequiredRole) {

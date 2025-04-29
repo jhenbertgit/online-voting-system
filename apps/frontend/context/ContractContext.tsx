@@ -1,7 +1,7 @@
 "use client";
 
-import React, { createContext, useContext, useMemo } from "react";
-import { useConfig, useAccount } from "wagmi";
+import React, { createContext, useContext, useMemo, useCallback } from "react";
+import { useConfig, useAccount, useAccountEffect } from "wagmi";
 import { getEthersSigner } from "@/lib/web3-utils";
 import { VotingGuardianABI } from "@/abis";
 import { ethers } from "ethers";
@@ -23,29 +23,41 @@ export function ContractProvider({ children }: { children: React.ReactNode }) {
   const [signer, setSigner] = React.useState<ethers.Signer | null>(null);
   const [contract, setContract] = React.useState<ethers.Contract | null>(null);
 
-  React.useEffect(() => {
-    async function setup() {
-      if (!isConnected) {
-        setSigner(null);
-        setContract(null);
-        return;
-      }
-      const _signer = await getEthersSigner(config);
-      setSigner(_signer);
-      if (_signer) {
-        const _contract = new ethers.Contract(
-          process.env.NEXT_PUBLIC_CONTRACT_ADDRESS!,
-          VotingGuardianABI,
-          _signer
-        );
-        setContract(_contract);
-      } else {
-        setContract(null);
-      }
+  // Setup signer and contract when wallet connects
+  const setup = useCallback(async () => {
+    if (!isConnected) {
+      setSigner(null);
+      setContract(null);
+      return;
     }
+    const _signer = await getEthersSigner(config);
+    setSigner(_signer);
+    if (_signer) {
+      const _contract = new ethers.Contract(
+        process.env.NEXT_PUBLIC_CONTRACT_ADDRESS!,
+        VotingGuardianABI,
+        _signer
+      );
+      setContract(_contract);
+    } else {
+      setContract(null);
+    }
+  }, [config, isConnected]);
+
+  React.useEffect(() => {
     setup();
     // Only rerun if config, address, or isConnected changes
-  }, [config, address, isConnected]);
+  }, [setup, address]);
+
+  useAccountEffect({
+    onConnect() {
+      setup(); // Refresh signer/contract when wallet connects
+    },
+    onDisconnect() {
+      setSigner(null);
+      setContract(null);
+    },
+  });
 
   const value = useMemo(
     () => ({

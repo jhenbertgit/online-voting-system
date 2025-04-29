@@ -21,52 +21,47 @@ export class WebhookService {
     );
   }
 
-  async verifyClerkWebhook(
+  verifyClerkWebhook(
     headers: Record<string, string>,
     rawPayload: string,
-  ): Promise<WebhookEvent | null> {
-    const {
-      'svix-id': svixId,
-      'svix-timestamp': svixTimestamp,
-      'svix-signature': svixSignature,
-    } = headers;
-
-    if (!svixId || !svixTimestamp || !svixSignature) {
-      this.logger.error('Missing required Svix headers');
-      return null;
-    }
-
+  ): WebhookEvent | null {
     try {
-      return this.svixClient.verify(rawPayload, {
-        'svix-id': svixId,
-        'svix-timestamp': svixTimestamp,
-        'svix-signature': svixSignature,
-      }) as WebhookEvent;
-    } catch (err) {
-      this.logger.error(
-        `Webhook verification failed: ${(err as Error).message}`,
-      );
+      const event = this.svixClient.verify(rawPayload, headers) as WebhookEvent;
+      return event;
+    } catch (error) {
+      if (error instanceof Error) {
+        this.logger.error(
+          `Webhook verification failed: ${error.message}`,
+          error.stack,
+        );
+      } else {
+        this.logger.error(`Webhook verification failed: ${String(error)}`);
+      }
       return null;
     }
   }
 
   async processWebhook(event: WebhookEvent): Promise<User | void> {
-    switch (event.type) {
-      case 'user.created':
-        return this.handleUserCreated(event.data as WebhookEventDto);
-      case 'user.updated':
-        return this.handleUserUpdated(event.data as WebhookEventDto);
-      case 'user.deleted': {
-        // For deleted events, allow partial data (only id is required)
-        const { id } = event.data as { id: string };
-        if (!id) {
-          this.logger.error('Webhook data for deletion missing id');
-          throw new Error('Webhook data for deletion missing id');
+    try {
+      switch (event.type) {
+        case 'user.created':
+          return this.handleUserCreated(event.data as WebhookEventDto);
+        case 'user.updated':
+          return this.handleUserUpdated(event.data as WebhookEventDto);
+        case 'user.deleted': {
+          // For deleted events, allow partial data (only id is required)
+          const { id } = event.data as { id: string };
+          if (!id) {
+            this.logger.error('Webhook data for deletion missing id');
+            throw new Error('Webhook data for deletion missing id');
+          }
+          return this.handleUserDeleted({ id } as WebhookEventDto);
         }
-        return this.handleUserDeleted({ id } as WebhookEventDto);
+        default:
+          this.logger.warn(`Unhandled event type: ${event.type}`);
       }
-      default:
-        this.logger.warn(`Unhandled event type: ${event.type}`);
+    } catch (error) {
+      this.handleWebhookError(error);
     }
   }
 
@@ -86,7 +81,14 @@ export class WebhookService {
         },
       });
     } catch (error) {
-      this.logger.error(`User creation failed: ${error.message}`);
+      if (error instanceof Error) {
+        this.logger.error(
+          `User creation failed: ${error.message}`,
+          error.stack,
+        );
+      } else {
+        this.logger.error(`User creation failed: ${String(error)}`);
+      }
       throw new Error('Failed to create user');
     }
   }
@@ -107,18 +109,39 @@ export class WebhookService {
         },
       });
     } catch (error) {
-      this.logger.error(`User update failed: ${error.message}`);
+      if (error instanceof Error) {
+        this.logger.error(`User update failed: ${error.message}`, error.stack);
+      } else {
+        this.logger.error(`User update failed: ${String(error)}`);
+      }
       throw new Error('Failed to update user');
     }
   }
 
-  private async handleUserDeleted(data: Partial<WebhookEventDto>): Promise<void> {
+  private async handleUserDeleted(
+    data: Partial<WebhookEventDto>,
+  ): Promise<void> {
     try {
       const { id: clerkUserId } = data;
       await this.prisma.user.delete({ where: { clerkUserId } });
     } catch (error) {
-      this.logger.error(`User deletion failed: ${error.message}`);
+      if (error instanceof Error) {
+        this.logger.error(
+          `User deletion failed: ${error.message}`,
+          error.stack,
+        );
+      } else {
+        this.logger.error(`User deletion failed: ${String(error)}`);
+      }
       throw new Error('Failed to delete user');
+    }
+  }
+
+  private handleWebhookError(error: unknown): void {
+    if (error instanceof Error) {
+      this.logger.error('Webhook error', error.stack);
+    } else {
+      this.logger.error('Webhook error', String(error));
     }
   }
 

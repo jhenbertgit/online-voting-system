@@ -84,7 +84,6 @@ export function CreateElection() {
     to: addDays(new Date(), 7),
   });
 
-  const url = process.env.NEXT_PUBLIC_API_BASE_URL;
   const { getToken } = useAuth();
 
   // --- Position Creation State ---
@@ -97,6 +96,12 @@ export function CreateElection() {
 
   // Elections context for dropdown
   const { elections, loading: electionsLoading, refresh } = useElections();
+
+  // Helper to get positions for selected election
+  const selectedElection = elections.find(
+    (el: any) => el.id === candidateInput.electionId
+  );
+  const availablePositions = selectedElection?.positions || [];
 
   // --- Candidate Handlers ---
   const addCandidate = () => {
@@ -158,8 +163,8 @@ export function CreateElection() {
         id: toastId,
       });
       await tx.wait();
-      // 4. Store in backend
-      const response = await fetch(`${url}/elections`, {
+      // 4. Store in backend (via Next.js proxy)
+      const response = await fetch("/api/elections", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -229,8 +234,7 @@ export function CreateElection() {
         positionId: candidateInput.positionId, // UUID from DB
         electionId: candidateInput.electionId, // UUID from DB
       };
-
-      const response = await fetch(`${url}/candidates`, {
+      const response = await fetch("/api/candidates", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -287,8 +291,8 @@ export function CreateElection() {
       // );
       // toast.loading(`Transaction submitted: ${tx.hash.slice(0, 10)}...`);
       // await tx.wait();
-      // 3. Store in backend
-      const response = await fetch(`${url}/positions`, {
+      // 3. Store in backend (via Next.js proxy)
+      const response = await fetch("/api/positions", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -601,35 +605,16 @@ export function CreateElection() {
                 />
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
-                <Label className="col-span-1">Position</Label>
-                <Select
-                  value={candidateInput.positionId}
-                  onValueChange={(value) =>
-                    setCandidateInput({ ...candidateInput, positionId: value })
-                  }
-                  disabled={loading}
-                >
-                  <SelectTrigger className="col-span-3">
-                    <SelectValue placeholder="Select Position" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {elections.map((el) =>
-                      el.positions?.map((pos: any) => (
-                        <SelectItem key={pos.id} value={pos.id}>
-                          {pos.name}
-                        </SelectItem>
-                      ))
-                    )}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
                 <Label className="col-span-1">Election</Label>
                 <Select
                   value={candidateInput.electionId}
-                  onValueChange={(value) =>
-                    setCandidateInput({ ...candidateInput, electionId: value })
-                  }
+                  onValueChange={(value) => {
+                    setCandidateInput({
+                      ...candidateInput,
+                      electionId: value,
+                      positionId: "",
+                    });
+                  }}
                   disabled={loading}
                 >
                   <SelectTrigger className="col-span-3">
@@ -639,6 +624,27 @@ export function CreateElection() {
                     {elections.map((el) => (
                       <SelectItem key={el.id} value={el.id}>
                         {el.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label className="col-span-1">Position</Label>
+                <Select
+                  value={candidateInput.positionId}
+                  onValueChange={(value) =>
+                    setCandidateInput({ ...candidateInput, positionId: value })
+                  }
+                  disabled={loading || !candidateInput.electionId}
+                >
+                  <SelectTrigger className="col-span-3">
+                    <SelectValue placeholder="Select Position" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availablePositions.map((pos: any) => (
+                      <SelectItem key={pos.id} value={pos.id}>
+                        {pos.name}
                       </SelectItem>
                     ))}
                   </SelectContent>

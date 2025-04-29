@@ -1,6 +1,5 @@
 import {
   Injectable,
-  NotFoundException,
   UnauthorizedException,
   InternalServerErrorException,
   BadRequestException,
@@ -8,6 +7,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { ConfigService } from '@nestjs/config';
 import { CreatePositionDto } from './dto/create-position.dto';
+import { UpdatePositionDto } from './dto/update-position.dto';
 
 @Injectable()
 export class PositionService {
@@ -29,7 +29,7 @@ export class PositionService {
     }
   }
 
-  async createPosition(userId: string, createPositionDto: CreatePositionDto) {
+  async createPosition(createPositionDto: CreatePositionDto, userId: string) {
     this.validateUserId(userId);
     this.validateAdminUser(userId);
     try {
@@ -46,16 +46,14 @@ export class PositionService {
   async updatePosition(
     id: string,
     userId: string,
-    updatePositionDto: CreatePositionDto,
+    updatePositionDto: UpdatePositionDto,
   ) {
     this.validateUserId(userId);
     this.validateAdminUser(userId);
     try {
       return await this.prisma.position.update({
         where: { id },
-        data: {
-          ...updatePositionDto,
-        },
+        data: updatePositionDto,
       });
     } catch (error) {
       this.handleDatabaseError(error, 'updating position');

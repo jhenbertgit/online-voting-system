@@ -1,23 +1,18 @@
-import {
-  Controller,
-  Get,
-  Post,
-  Body,
-  Param,
-  UseGuards,
-  Request,
-} from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Request } from '@nestjs/common';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { UserRole } from '../auth/types';
 import { PositionService } from './position.service';
 import { CreatePositionDto } from './dto/create-position.dto';
-import { ClerkAuthGuard } from '../auth/guards/clerk-auth.guard';
-import { RolesGuard } from '../auth/guards/roles.guard';
-import { ApiTags, ApiOperation, ApiResponse, ApiBody, ApiParam } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBody,
+  ApiParam,
+} from '@nestjs/swagger';
 
 @ApiTags('positions')
 @Controller('positions')
-@UseGuards(ClerkAuthGuard, RolesGuard)
 export class PositionController {
   constructor(private readonly positionService: PositionService) {}
 
@@ -39,7 +34,7 @@ export class PositionController {
     @Request() req: { user: { id: string } },
   ) {
     const userId = req.user.id;
-    return this.positionService.createPosition(userId, createPositionDto);
+    return this.positionService.createPosition(createPositionDto, userId);
   }
 
   @Post('update/:id')

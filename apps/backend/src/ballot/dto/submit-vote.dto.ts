@@ -21,11 +21,11 @@ export class SubmitVoteDto {
   userId: string;
 
   @IsHexadecimal()
-  @Length(32, 32)
+  @Length(66, 66)
   candidateHash: string;
 
   @IsHexadecimal()
-  @Length(32, 32)
+  @Length(66, 66)
   voterCommitment: string;
 
   @IsEthereumAddress()

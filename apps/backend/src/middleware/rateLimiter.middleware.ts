@@ -16,7 +16,7 @@ export class RateLimiterMiddleware implements NestMiddleware {
       this.rateLimiter = new RateLimiterRedis({
         storeClient: this.redisService.getClient('RateLimiterMiddleware'),
         keyPrefix: 'rlflx',
-        points: 5, // 5 votes
+        points: 15, // 15 votes
         duration: 60, // per minute
       });
     }

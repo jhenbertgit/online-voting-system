@@ -54,8 +54,8 @@ export class ElectionService {
   }
 
   async createElection(
-    userId: string,
     createElectionDto: CreateElectionDto,
+    userId: string,
   ): Promise<Election> {
     this.validateUserId(userId);
     this.validateAdminUser(userId);

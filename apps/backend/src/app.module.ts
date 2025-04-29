@@ -9,6 +9,7 @@ import { SessionCacheService } from './services';
 import { PositionModule } from './position/position.module';
 import { WebhookModule } from './webhook/webhook.module';
 import { CandidateModule } from './candidate/candidate.module';
+import { CacheModule } from './cache/cache.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { CandidateModule } from './candidate/candidate.module';
     ElectionModule,
     RedisModule,
     PositionModule,
+    CacheModule,
     WebhookModule,
     CandidateModule,
   ],

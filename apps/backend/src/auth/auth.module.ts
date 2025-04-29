@@ -1,11 +1,10 @@
-import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
+import { ConfigModule } from '@nestjs/config';
+import { HttpModule } from '@nestjs/axios';
+import { ClerkService } from './clerk.service';
 import { ClerkAuthGuard } from './guards/clerk-auth.guard';
 import { RolesGuard } from './guards/roles.guard';
-import { ClerkService } from './clerk.service';
-import { HttpModule } from '@nestjs/axios';
-import { ConfigModule } from '@nestjs/config';
-import { ClerkMiddleware } from './clerk.middleware';
 
 @Module({
   imports: [ConfigModule, HttpModule],
@@ -22,8 +21,6 @@ import { ClerkMiddleware } from './clerk.middleware';
   ],
   exports: [ClerkService],
 })
-export class AuthModule implements NestModule {
-  configure(consumer: MiddlewareConsumer) {
-    consumer.apply(ClerkMiddleware).forRoutes('*');
-  }
+export class AuthModule {
+  // No longer using configure or consumer
 }

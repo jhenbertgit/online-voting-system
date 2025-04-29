@@ -16,19 +16,6 @@ import {
   Tooltip,
 } from "recharts";
 
-// Sanitize and validate any props passed to Analytics if you later add user input features
-function sanitizeAnalyticsProps(props: AnalyticsProps) {
-  // Example: Only allow specific keys and sanitize values as needed
-  const allowedProps: string[] = [];
-  const sanitized: Record<string, unknown> = {};
-  for (const key of allowedProps) {
-    if (key in props) {
-      sanitized[key] = (props as Record<string, unknown>)[key];
-    }
-  }
-  return sanitized;
-}
-
 const COLORS = ["#0088FE", "#00C49F"];
 
 type AnalyticsProps = React.HTMLAttributes<HTMLDivElement>;
@@ -41,18 +28,29 @@ export function Analytics(props: AnalyticsProps): React.JSX.Element {
     if (!elections || !Array.isArray(elections)) return null;
     return elections.map((election: any) => {
       // Pie data for this election
-      const candidateCount = Array.isArray(election.candidates) ? election.candidates.length : 0;
-      const voterCount = Array.isArray(election.votes) ? election.votes.length : 0;
+      const candidateCount = Array.isArray(election.candidates)
+        ? election.candidates.length
+        : 0;
+      const voterCount = Array.isArray(election.votes)
+        ? election.votes.length
+        : 0;
       const pieData = [
         { name: "Candidates", value: candidateCount },
         { name: "Voters", value: voterCount },
       ];
       // Build position bar charts for this election
-      const positions = Array.isArray(election.positions) ? election.positions : [];
-      const candidates = Array.isArray(election.candidates) ? election.candidates : [];
+      const positions = Array.isArray(election.positions)
+        ? election.positions
+        : [];
+      const candidates = Array.isArray(election.candidates)
+        ? election.candidates
+        : [];
       const votes = Array.isArray(election.votes) ? election.votes : [];
       return (
-        <Card key={election.id} className="mb-8 shadow-lg border border-gray-200 dark:border-gray-800">
+        <Card
+          key={election.id}
+          className="mb-8 shadow-lg border border-gray-200 dark:border-gray-800"
+        >
           <CardHeader>
             <CardTitle className="text-xl font-bold">{election.name}</CardTitle>
             <div className="text-gray-500 text-sm">{election.description}</div>
@@ -75,7 +73,10 @@ export function Analytics(props: AnalyticsProps): React.JSX.Element {
                       label
                     >
                       {pieData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        <Cell
+                          key={`cell-${index}`}
+                          fill={COLORS[index % COLORS.length]}
+                        />
                       ))}
                     </Pie>
                     <Tooltip />
@@ -86,14 +87,23 @@ export function Analytics(props: AnalyticsProps): React.JSX.Element {
               <div className="flex-1 flex flex-col gap-8">
                 {positions.map((position: any) => {
                   // Candidates for this position
-                  const positionCandidates = candidates.filter((cand: any) => cand.positionId === position.id);
+                  const positionCandidates = candidates.filter(
+                    (cand: any) => cand.positionId === position.id
+                  );
                   // Votes per candidate
-                  const candidateVoteData = positionCandidates.map((cand: any) => ({
-                    name: cand.name,
-                    votes: votes.filter((vote: any) => vote.candidateId === cand.id).length,
-                  }));
+                  const candidateVoteData = positionCandidates.map(
+                    (cand: any) => ({
+                      name: cand.name,
+                      votes: votes.filter(
+                        (vote: any) => vote.candidateId === cand.id
+                      ).length,
+                    })
+                  );
                   return (
-                    <div key={position.id} className="mb-4 w-full max-w-xs mx-auto bg-gray-50 dark:bg-gray-900 rounded-lg p-4 shadow">
+                    <div
+                      key={position.id}
+                      className="mb-4 w-full max-w-xs mx-auto bg-gray-50 dark:bg-gray-900 rounded-lg p-4 shadow"
+                    >
                       <h4 className="font-semibold text-center mb-2 text-lg text-primary-700 dark:text-primary-300">
                         {position.name}
                       </h4>
@@ -104,11 +114,25 @@ export function Analytics(props: AnalyticsProps): React.JSX.Element {
                           layout="vertical"
                           barCategoryGap={16}
                         >
-                          <XAxis type="number" allowDecimals={false} domain={[0, 'dataMax + 5']} />
-                          <YAxis type="category" dataKey="name" width={100} tick={{ fontSize: 13 }} />
+                          <XAxis
+                            type="number"
+                            allowDecimals={false}
+                            domain={[0, "dataMax + 5"]}
+                          />
+                          <YAxis
+                            type="category"
+                            dataKey="name"
+                            width={100}
+                            tick={{ fontSize: 13 }}
+                          />
                           <Legend />
                           <Tooltip />
-                          <Bar dataKey="votes" fill="#8884d8" name="Votes" maxBarSize={28} />
+                          <Bar
+                            dataKey="votes"
+                            fill="#8884d8"
+                            name="Votes"
+                            maxBarSize={28}
+                          />
                         </BarChart>
                       </ResponsiveContainer>
                     </div>

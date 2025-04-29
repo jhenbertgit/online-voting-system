@@ -1,11 +1,10 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { clerkMiddleware } from '@clerk/express';
 import { ValidationPipe } from '@nestjs/common';
 import * as bodyParser from 'body-parser';
 import { Request as ExpressRequest } from 'express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-
+import { clerkMiddleware } from '@clerk/express';
 // Extend the Express Request type to include rawBody
 declare module 'express' {
   interface Request {
@@ -17,6 +16,8 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   // Clerk webhook raw body middleware - must come before global pipes and other middleware
+  app.use(clerkMiddleware({}));
+
   app.use(
     '/api/v1/webhooks/clerk',
     bodyParser.raw({ type: '*/*' }),
@@ -39,14 +40,6 @@ async function bootstrap() {
 
   // Enable global validation
   app.useGlobalPipes(new ValidationPipe());
-
-  // Clerk middleware
-  app.use(
-    clerkMiddleware({
-      secretKey: process.env.CLERK_SECRET_KEY,
-      // Add other Clerk middleware options here as needed
-    }),
-  );
 
   // Swagger/OpenAPI setup
   const swaggerConfig = new DocumentBuilder()
