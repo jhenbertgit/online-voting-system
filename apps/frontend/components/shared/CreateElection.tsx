@@ -231,8 +231,12 @@ export function CreateElection() {
     },
   });
 
+  let toastId: string | number;
+  let tx: any;
   const createCandidateMutation = useMutation({
     mutationFn: async (data: CandidateFormType) => {
+      toastId = toast.loading("Registering candidate...");
+
       if (!signer || !contract)
         throw new Error("No signer or contract available");
       const token = await getToken();
@@ -240,7 +244,11 @@ export function CreateElection() {
       const positionId = ethers.id(data.positionId);
 
       // Add candidate on blockchain
-      const tx = await contract.addCandidate(idHash, positionId);
+      tx = await contract.addCandidate(idHash, positionId);
+
+      toast.loading(`Transaction submitted: ${tx.hash.slice(0, 10)}...`, {
+        id: toastId,
+      });
       await tx.wait();
 
       // Add candidate to database
@@ -268,11 +276,30 @@ export function CreateElection() {
       return payload;
     },
     onSuccess: (payload) => {
-      toast.success("Candidate registered!");
+      if (toastId) {
+        toast.success("Candidate registered!", {
+          id: toastId,
+          description: `Transaction: ${tx.hash.slice(0, 10)}...`,
+          action: {
+            label: "View",
+            onClick: () =>
+              window.open(
+                `${process.env.NEXT_PUBLIC_POLYGONSCAN_URL}/tx/${tx.hash}`,
+                "_blank"
+              ),
+          },
+        });
+      }
       candidateForm.reset();
     },
     onError: (err: Error) => {
-      toast.error(err.message || "Failed to register candidate");
+      if (toastId) {
+        toast.error(err.message || "Failed to register candidate", {
+          id: toastId,
+        });
+      } else {
+        toast.error(err.message || "Failed to register candidate");
+      }
     },
   });
 
@@ -532,11 +559,14 @@ export function CreateElection() {
                         <SelectValue placeholder="Select Election" />
                       </SelectTrigger>
                       <SelectContent>
-                        {elections.map((el) => (
-                          <SelectItem key={el.id} value={el.id}>
-                            {el.name}
-                          </SelectItem>
-                        ))}
+                        <SelectGroup>
+                          <SelectLabel>Election</SelectLabel>
+                          {elections.map((el) => (
+                            <SelectItem key={el.id} value={el.id}>
+                              {el.name}
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
                       </SelectContent>
                     </Select>
                   </div>
@@ -553,16 +583,19 @@ export function CreateElection() {
                         <SelectValue placeholder="Select Position" />
                       </SelectTrigger>
                       <SelectContent>
-                        {elections
-                          .find(
-                            (el: any) =>
-                              el.id === candidateForm.watch("electionId")
-                          )
-                          ?.positions.map((pos: any) => (
-                            <SelectItem key={pos.id} value={pos.id}>
-                              {pos.name}
-                            </SelectItem>
-                          ))}
+                        <SelectGroup>
+                          <SelectLabel>Position</SelectLabel>
+                          {elections
+                            .find(
+                              (el: any) =>
+                                el.id === candidateForm.watch("electionId")
+                            )
+                            ?.positions.map((pos: any) => (
+                              <SelectItem key={pos.id} value={pos.id}>
+                                {pos.name}
+                              </SelectItem>
+                            ))}
+                        </SelectGroup>
                       </SelectContent>
                     </Select>
                   </div>

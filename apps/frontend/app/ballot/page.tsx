@@ -78,7 +78,6 @@ export default function BallotPage() {
   const [userId, setUserId] = useState<string>("");
   const [activeElectionId, setActiveElectionId] = useState<string>("");
   const [open, setOpen] = useState(false);
-  const queryClient = useQueryClient();
 
   const currentElection =
     elections.find((el: any) => el.id === activeElectionId) || elections[0];
@@ -99,7 +98,6 @@ export default function BallotPage() {
   const {
     control,
     handleSubmit,
-    setValue,
     getValues,
     formState: { errors },
     reset,
