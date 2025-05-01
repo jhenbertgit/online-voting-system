@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { useAccount } from "wagmi";
-import { addDays, format } from "date-fns";
+import { format } from "date-fns";
 import { CalendarIcon, UserPlus2Icon, CheckCircle2Icon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Calendar } from "@/components/ui/calendar";
@@ -36,20 +36,19 @@ import {
 } from "@/components/ui/select";
 import { useElections, useContract } from "@/context";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useForm, FormProvider } from "react-hook-form";
+import { useForm, FormProvider, useWatch } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Spinner } from "@/components/ui/spinner";
+import { useEffect } from "react";
 
 // --- Zod Schemas ---
 const electionSchema = z.object({
   name: z.string().min(1, "Election name required"),
   description: z.string().optional(),
-  dateRange: z.object({
-    from: z.date(),
-    to: z.date(),
-  }),
+  startDate: z.date({ required_error: "Start date is required" }),
+  endDate: z.date({ required_error: "End date is required" }),
 });
 
 const positionSchema = z.object({
@@ -95,12 +94,25 @@ export function CreateElection() {
     defaultValues: {
       name: "",
       description: "",
-      dateRange: {
-        from: new Date(),
-        to: addDays(new Date(), 7),
-      },
+      startDate: undefined,
+      endDate: undefined,
     },
   });
+
+  const startDate = useWatch({
+    control: electionForm.control,
+    name: "startDate",
+  });
+
+  const endDate = useWatch({
+    control: electionForm.control,
+    name: "endDate",
+  });
+
+  useEffect(() => {
+    console.log("[DEBUG] Current startDate:", startDate);
+    console.log("[DEBUG] Current endDate:", endDate);
+  }, [startDate, endDate]);
 
   const positionForm = useForm<PositionFormType>({
     resolver: zodResolver(positionSchema),
@@ -129,23 +141,18 @@ export function CreateElection() {
       if (!signer || !contract)
         throw new Error("No signer or contract available");
       const token = await getToken();
-      // Ensure both from and to are defined before using them
-      console.log("Token:", token);
-      if (!data.dateRange.from || !data.dateRange.to) {
+      if (!data.startDate || !data.endDate) {
         throw new Error("Both start and end dates must be selected.");
       }
-      // For backend, send startDate and endDate as ISO strings
-      // For blockchain, keep startTime and endTime if needed (commented out here)
-      // const startTime = Math.floor(data.dateRange.from.getTime() / 1000);
-      // const endTime = Math.floor(data.dateRange.to.getTime() / 1000);
-      // const tx = await contract.createElection(
-      //   ethers.id(data.name),
-      //   data.name,
-      //   startTime,
-      //   endTime,
-      //   ethers.ZeroHash
-      // );
-      // await tx.wait();
+      const startDate =
+        data.startDate instanceof Date
+          ? data.startDate.toISOString()
+          : undefined;
+      const endDate =
+        data.endDate instanceof Date ? data.endDate.toISOString() : undefined;
+      if (!startDate || !endDate) {
+        throw new Error("Invalid date range provided.");
+      }
       const response = await fetch("/api/elections", {
         method: "POST",
         headers: {
@@ -155,8 +162,8 @@ export function CreateElection() {
         body: JSON.stringify({
           name: data.name,
           description: data.description,
-          startDate: data.dateRange.from.toISOString(),
-          endDate: data.dateRange.to.toISOString(),
+          startDate,
+          endDate,
           merkleRoot: ethers.ZeroHash,
           contractAddress: process.env.NEXT_PUBLIC_CONTRACT_ADDRESS,
           adminAddress: address,
@@ -323,69 +330,78 @@ export function CreateElection() {
                     />
                   </div>
                   <div className="grid grid-cols-4 items-center gap-4">
-                    <Label className="text-right">Election Period</Label>
-                    <div className={cn("grid gap-2")}>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button
-                            id="date"
-                            variant={"outline"}
-                            className={cn(
-                              "w-full justify-start text-left font-normal",
-                              !electionForm.watch("dateRange.from") &&
-                                "text-muted-foreground"
-                            )}
-                          >
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {electionForm.watch("dateRange.from") ? (
-                              electionForm.watch("dateRange.to") ? (
-                                <>
-                                  {format(
-                                    electionForm.watch("dateRange.from"),
-                                    "LLL dd, y"
-                                  )}{" "}
-                                  -{" "}
-                                  {format(
-                                    electionForm.watch("dateRange.to"),
-                                    "LLL dd, y"
-                                  )}
-                                </>
+                    <Label className="col-span-1">Election Dates</Label>
+                    <div className="flex gap-4 col-span-3">
+                      {/* Start Date Picker */}
+                      <div className="flex-1">
+                        <Label>Start Date</Label>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant={"outline"}
+                              className={cn(
+                                "w-full justify-start text-left font-normal",
+                                !electionForm.watch("startDate") &&
+                                  "text-muted-foreground"
+                              )}
+                              type="button"
+                            >
+                              <CalendarIcon className="mr-2 h-4 w-4" />
+                              {electionForm.watch("startDate") ? (
+                                format(electionForm.watch("startDate"), "PPP")
                               ) : (
-                                format(
-                                  electionForm.watch("dateRange.from"),
-                                  "LLL dd, y"
-                                )
-                              )
-                            ) : (
-                              <span>Pick a date range</span>
-                            )}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar
-                            initialFocus
-                            mode="range"
-                            defaultMonth={
-                              electionForm.watch("dateRange.from") || new Date()
-                            }
-                            selected={electionForm.watch("dateRange")}
-                            onSelect={(range) => {
-                              if (range?.from && range?.to) {
-                                electionForm.setValue("dateRange", {
-                                  from: range.from,
-                                  to: range.to,
-                                });
-                              } else {
-                                electionForm.setValue("dateRange", {
-                                  from: new Date(),
-                                  to: addDays(new Date(), 7),
-                                });
-                              }
-                            }}
-                            numberOfMonths={2}
-                          />
-                        </PopoverContent>
-                      </Popover>
+                                <span>Pick a date</span>
+                              )}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0">
+                            <Calendar
+                              mode="single"
+                              selected={electionForm.watch("startDate")}
+                              onSelect={(date) => {
+                                if (date)
+                                  electionForm.setValue("startDate", date);
+                              }}
+                              initialFocus
+                            />
+                          </PopoverContent>
+                        </Popover>
+                      </div>
+                      {/* End Date Picker */}
+                      <div className="flex-1">
+                        <Label>End Date</Label>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant={"outline"}
+                              className={cn(
+                                "w-full justify-start text-left font-normal",
+                                !electionForm.watch("endDate") &&
+                                  "text-muted-foreground"
+                              )}
+                              type="button"
+                            >
+                              <CalendarIcon className="mr-2 h-4 w-4" />
+                              {electionForm.watch("endDate") ? (
+                                format(electionForm.watch("endDate"), "PPP")
+                              ) : (
+                                <span>Pick a date</span>
+                              )}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0">
+                            <Calendar
+                              mode="single"
+                              selected={electionForm.watch("endDate")}
+                              onSelect={(date) => {
+                                if (date)
+                                  electionForm.setValue("endDate", date);
+                              }}
+                              initialFocus
+                            />
+                          </PopoverContent>
+                        </Popover>
+                      </div>
                     </div>
                   </div>
                   <div className="flex justify-end gap-2">

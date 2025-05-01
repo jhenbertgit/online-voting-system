@@ -7,8 +7,8 @@
     "lint": "turbo run lint",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "check-types": "turbo run check-types",
-    "db:start": "docker compose up -d",
-    "db:stop": "docker compose down"
+    "start:db": "docker compose up -d",
+    "stop:db": "docker compose down"
   },
   "devDependencies": {
     "prettier": "^3.5.3",
