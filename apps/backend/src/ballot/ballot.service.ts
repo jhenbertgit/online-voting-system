@@ -29,7 +29,7 @@ export class BallotService {
     return this.prisma.$transaction(async (prisma) => {
       // 1. Validate candidate hash
       const candidate = await prisma.candidate.findUnique({
-        where: { idHash: dto.candidateHash },
+        where: { onChainCandidateId: dto.candidateHash },
       });
 
       if (!candidate) {

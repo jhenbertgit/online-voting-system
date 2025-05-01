@@ -8003,7 +8003,7 @@ snapshots:
       '@ethersproject/bytes': 5.8.0
       '@ethersproject/logger': 5.8.0
       '@ethersproject/properties': 5.8.0
-      bn.js: 5.2.1
+      bn.js: 5.2.2
       elliptic: 6.6.1
       hash.js: 1.1.7
 

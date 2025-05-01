@@ -19,7 +19,7 @@ export class CreateCandidateDto {
 
   @IsString()
   @IsNotEmpty()
-  idHash: string;
+  onChainCandidateId: string;
 
   @IsString()
   @IsNotEmpty()

@@ -62,19 +62,19 @@ model Position {
 }
 
 model Candidate {
-  id         String   @id @default(uuid())
-  name       String
-  bio        String?  @db.Text
-  party      String?
-  avatar     String?
-  idHash     String   @unique // keccak256(candidateId) for blockchain
-  position   Position @relation(fields: [positionId], references: [id])
-  positionId String
-  election   Election @relation(fields: [electionId], references: [id])
-  electionId String
-  votes      Vote[]
+  id                 String   @id @default(uuid())
+  name               String
+  bio                String?  @db.Text
+  party              String?
+  avatar             String?
+  onChainCandidateId String   @unique // on-chain candidate ID (uint256)
+  position           Position @relation(fields: [positionId], references: [id])
+  positionId         String
+  election           Election @relation(fields: [electionId], references: [id])
+  electionId         String
+  votes              Vote[]
 
-  @@index([idHash, positionId, electionId])
+  @@index([onChainCandidateId, positionId, electionId])
 }
 
 model Vote {
@@ -85,7 +85,7 @@ model Vote {
   positionId      String
   candidate       Candidate @relation(fields: [candidateId], references: [id])
   candidateId     String
-  candidateHash   String // Reference to Candidate.idHash
+  candidateHash   String // Reference to Candidate.onChainCandidateId
   user            User      @relation(fields: [userId], references: [id])
   userId          String
   voterCommitment String    @unique // keccak256(userId + secret)

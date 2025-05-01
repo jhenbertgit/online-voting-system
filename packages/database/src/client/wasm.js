@@ -157,7 +157,7 @@ exports.Prisma.CandidateScalarFieldEnum = {
   bio: 'bio',
   party: 'party',
   avatar: 'avatar',
-  idHash: 'idHash',
+  onChainCandidateId: 'onChainCandidateId',
   positionId: 'positionId',
   electionId: 'electionId'
 };

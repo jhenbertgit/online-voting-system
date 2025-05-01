@@ -4816,7 +4816,7 @@ export namespace Prisma {
     bio: string | null
     party: string | null
     avatar: string | null
-    idHash: string | null
+    onChainCandidateId: string | null
     positionId: string | null
     electionId: string | null
   }
@@ -4827,7 +4827,7 @@ export namespace Prisma {
     bio: string | null
     party: string | null
     avatar: string | null
-    idHash: string | null
+    onChainCandidateId: string | null
     positionId: string | null
     electionId: string | null
   }
@@ -4838,7 +4838,7 @@ export namespace Prisma {
     bio: number
     party: number
     avatar: number
-    idHash: number
+    onChainCandidateId: number
     positionId: number
     electionId: number
     _all: number
@@ -4851,7 +4851,7 @@ export namespace Prisma {
     bio?: true
     party?: true
     avatar?: true
-    idHash?: true
+    onChainCandidateId?: true
     positionId?: true
     electionId?: true
   }
@@ -4862,7 +4862,7 @@ export namespace Prisma {
     bio?: true
     party?: true
     avatar?: true
-    idHash?: true
+    onChainCandidateId?: true
     positionId?: true
     electionId?: true
   }
@@ -4873,7 +4873,7 @@ export namespace Prisma {
     bio?: true
     party?: true
     avatar?: true
-    idHash?: true
+    onChainCandidateId?: true
     positionId?: true
     electionId?: true
     _all?: true
@@ -4957,7 +4957,7 @@ export namespace Prisma {
     bio: string | null
     party: string | null
     avatar: string | null
-    idHash: string
+    onChainCandidateId: string
     positionId: string
     electionId: string
     _count: CandidateCountAggregateOutputType | null
@@ -4985,7 +4985,7 @@ export namespace Prisma {
     bio?: boolean
     party?: boolean
     avatar?: boolean
-    idHash?: boolean
+    onChainCandidateId?: boolean
     positionId?: boolean
     electionId?: boolean
     position?: boolean | PositionDefaultArgs<ExtArgs>
@@ -5000,7 +5000,7 @@ export namespace Prisma {
     bio?: boolean
     party?: boolean
     avatar?: boolean
-    idHash?: boolean
+    onChainCandidateId?: boolean
     positionId?: boolean
     electionId?: boolean
     position?: boolean | PositionDefaultArgs<ExtArgs>
@@ -5013,7 +5013,7 @@ export namespace Prisma {
     bio?: boolean
     party?: boolean
     avatar?: boolean
-    idHash?: boolean
+    onChainCandidateId?: boolean
     positionId?: boolean
     electionId?: boolean
     position?: boolean | PositionDefaultArgs<ExtArgs>
@@ -5026,12 +5026,12 @@ export namespace Prisma {
     bio?: boolean
     party?: boolean
     avatar?: boolean
-    idHash?: boolean
+    onChainCandidateId?: boolean
     positionId?: boolean
     electionId?: boolean
   }
 
-  export type CandidateOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "name" | "bio" | "party" | "avatar" | "idHash" | "positionId" | "electionId", ExtArgs["result"]["candidate"]>
+  export type CandidateOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "name" | "bio" | "party" | "avatar" | "onChainCandidateId" | "positionId" | "electionId", ExtArgs["result"]["candidate"]>
   export type CandidateInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     position?: boolean | PositionDefaultArgs<ExtArgs>
     election?: boolean | ElectionDefaultArgs<ExtArgs>
@@ -5060,7 +5060,7 @@ export namespace Prisma {
       bio: string | null
       party: string | null
       avatar: string | null
-      idHash: string
+      onChainCandidateId: string
       positionId: string
       electionId: string
     }, ExtArgs["result"]["candidate"]>
@@ -5494,7 +5494,7 @@ export namespace Prisma {
     readonly bio: FieldRef<"Candidate", 'String'>
     readonly party: FieldRef<"Candidate", 'String'>
     readonly avatar: FieldRef<"Candidate", 'String'>
-    readonly idHash: FieldRef<"Candidate", 'String'>
+    readonly onChainCandidateId: FieldRef<"Candidate", 'String'>
     readonly positionId: FieldRef<"Candidate", 'String'>
     readonly electionId: FieldRef<"Candidate", 'String'>
   }
@@ -7129,7 +7129,7 @@ export namespace Prisma {
     bio: 'bio',
     party: 'party',
     avatar: 'avatar',
-    idHash: 'idHash',
+    onChainCandidateId: 'onChainCandidateId',
     positionId: 'positionId',
     electionId: 'electionId'
   };
@@ -7499,7 +7499,7 @@ export namespace Prisma {
     bio?: StringNullableFilter<"Candidate"> | string | null
     party?: StringNullableFilter<"Candidate"> | string | null
     avatar?: StringNullableFilter<"Candidate"> | string | null
-    idHash?: StringFilter<"Candidate"> | string
+    onChainCandidateId?: StringFilter<"Candidate"> | string
     positionId?: StringFilter<"Candidate"> | string
     electionId?: StringFilter<"Candidate"> | string
     position?: XOR<PositionScalarRelationFilter, PositionWhereInput>
@@ -7513,7 +7513,7 @@ export namespace Prisma {
     bio?: SortOrderInput | SortOrder
     party?: SortOrderInput | SortOrder
     avatar?: SortOrderInput | SortOrder
-    idHash?: SortOrder
+    onChainCandidateId?: SortOrder
     positionId?: SortOrder
     electionId?: SortOrder
     position?: PositionOrderByWithRelationInput
@@ -7523,7 +7523,7 @@ export namespace Prisma {
 
   export type CandidateWhereUniqueInput = Prisma.AtLeast<{
     id?: string
-    idHash?: string
+    onChainCandidateId?: string
     AND?: CandidateWhereInput | CandidateWhereInput[]
     OR?: CandidateWhereInput[]
     NOT?: CandidateWhereInput | CandidateWhereInput[]
@@ -7536,7 +7536,7 @@ export namespace Prisma {
     position?: XOR<PositionScalarRelationFilter, PositionWhereInput>
     election?: XOR<ElectionScalarRelationFilter, ElectionWhereInput>
     votes?: VoteListRelationFilter
-  }, "id" | "idHash">
+  }, "id" | "onChainCandidateId">
 
   export type CandidateOrderByWithAggregationInput = {
     id?: SortOrder
@@ -7544,7 +7544,7 @@ export namespace Prisma {
     bio?: SortOrderInput | SortOrder
     party?: SortOrderInput | SortOrder
     avatar?: SortOrderInput | SortOrder
-    idHash?: SortOrder
+    onChainCandidateId?: SortOrder
     positionId?: SortOrder
     electionId?: SortOrder
     _count?: CandidateCountOrderByAggregateInput
@@ -7561,7 +7561,7 @@ export namespace Prisma {
     bio?: StringNullableWithAggregatesFilter<"Candidate"> | string | null
     party?: StringNullableWithAggregatesFilter<"Candidate"> | string | null
     avatar?: StringNullableWithAggregatesFilter<"Candidate"> | string | null
-    idHash?: StringWithAggregatesFilter<"Candidate"> | string
+    onChainCandidateId?: StringWithAggregatesFilter<"Candidate"> | string
     positionId?: StringWithAggregatesFilter<"Candidate"> | string
     electionId?: StringWithAggregatesFilter<"Candidate"> | string
   }
@@ -7897,7 +7897,7 @@ export namespace Prisma {
     bio?: string | null
     party?: string | null
     avatar?: string | null
-    idHash: string
+    onChainCandidateId: string
     position: PositionCreateNestedOneWithoutCandidatesInput
     election: ElectionCreateNestedOneWithoutCandidatesInput
     votes?: VoteCreateNestedManyWithoutCandidateInput
@@ -7909,7 +7909,7 @@ export namespace Prisma {
     bio?: string | null
     party?: string | null
     avatar?: string | null
-    idHash: string
+    onChainCandidateId: string
     positionId: string
     electionId: string
     votes?: VoteUncheckedCreateNestedManyWithoutCandidateInput
@@ -7921,7 +7921,7 @@ export namespace Prisma {
     bio?: NullableStringFieldUpdateOperationsInput | string | null
     party?: NullableStringFieldUpdateOperationsInput | string | null
     avatar?: NullableStringFieldUpdateOperationsInput | string | null
-    idHash?: StringFieldUpdateOperationsInput | string
+    onChainCandidateId?: StringFieldUpdateOperationsInput | string
     position?: PositionUpdateOneRequiredWithoutCandidatesNestedInput
     election?: ElectionUpdateOneRequiredWithoutCandidatesNestedInput
     votes?: VoteUpdateManyWithoutCandidateNestedInput
@@ -7933,7 +7933,7 @@ export namespace Prisma {
     bio?: NullableStringFieldUpdateOperationsInput | string | null
     party?: NullableStringFieldUpdateOperationsInput | string | null
     avatar?: NullableStringFieldUpdateOperationsInput | string | null
-    idHash?: StringFieldUpdateOperationsInput | string
+    onChainCandidateId?: StringFieldUpdateOperationsInput | string
     positionId?: StringFieldUpdateOperationsInput | string
     electionId?: StringFieldUpdateOperationsInput | string
     votes?: VoteUncheckedUpdateManyWithoutCandidateNestedInput
@@ -7945,7 +7945,7 @@ export namespace Prisma {
     bio?: string | null
     party?: string | null
     avatar?: string | null
-    idHash: string
+    onChainCandidateId: string
     positionId: string
     electionId: string
   }
@@ -7956,7 +7956,7 @@ export namespace Prisma {
     bio?: NullableStringFieldUpdateOperationsInput | string | null
     party?: NullableStringFieldUpdateOperationsInput | string | null
     avatar?: NullableStringFieldUpdateOperationsInput | string | null
-    idHash?: StringFieldUpdateOperationsInput | string
+    onChainCandidateId?: StringFieldUpdateOperationsInput | string
   }
 
   export type CandidateUncheckedUpdateManyInput = {
@@ -7965,7 +7965,7 @@ export namespace Prisma {
     bio?: NullableStringFieldUpdateOperationsInput | string | null
     party?: NullableStringFieldUpdateOperationsInput | string | null
     avatar?: NullableStringFieldUpdateOperationsInput | string | null
-    idHash?: StringFieldUpdateOperationsInput | string
+    onChainCandidateId?: StringFieldUpdateOperationsInput | string
     positionId?: StringFieldUpdateOperationsInput | string
     electionId?: StringFieldUpdateOperationsInput | string
   }
@@ -8362,7 +8362,7 @@ export namespace Prisma {
     bio?: SortOrder
     party?: SortOrder
     avatar?: SortOrder
-    idHash?: SortOrder
+    onChainCandidateId?: SortOrder
     positionId?: SortOrder
     electionId?: SortOrder
   }
@@ -8373,7 +8373,7 @@ export namespace Prisma {
     bio?: SortOrder
     party?: SortOrder
     avatar?: SortOrder
-    idHash?: SortOrder
+    onChainCandidateId?: SortOrder
     positionId?: SortOrder
     electionId?: SortOrder
   }
@@ -8384,7 +8384,7 @@ export namespace Prisma {
     bio?: SortOrder
     party?: SortOrder
     avatar?: SortOrder
-    idHash?: SortOrder
+    onChainCandidateId?: SortOrder
     positionId?: SortOrder
     electionId?: SortOrder
   }
@@ -9143,7 +9143,7 @@ export namespace Prisma {
     bio?: string | null
     party?: string | null
     avatar?: string | null
-    idHash: string
+    onChainCandidateId: string
     position: PositionCreateNestedOneWithoutCandidatesInput
     votes?: VoteCreateNestedManyWithoutCandidateInput
   }
@@ -9154,7 +9154,7 @@ export namespace Prisma {
     bio?: string | null
     party?: string | null
     avatar?: string | null
-    idHash: string
+    onChainCandidateId: string
     positionId: string
     votes?: VoteUncheckedCreateNestedManyWithoutCandidateInput
   }
@@ -9237,7 +9237,7 @@ export namespace Prisma {
     bio?: StringNullableFilter<"Candidate"> | string | null
     party?: StringNullableFilter<"Candidate"> | string | null
     avatar?: StringNullableFilter<"Candidate"> | string | null
-    idHash?: StringFilter<"Candidate"> | string
+    onChainCandidateId?: StringFilter<"Candidate"> | string
     positionId?: StringFilter<"Candidate"> | string
     electionId?: StringFilter<"Candidate"> | string
   }
@@ -9287,7 +9287,7 @@ export namespace Prisma {
     bio?: string | null
     party?: string | null
     avatar?: string | null
-    idHash: string
+    onChainCandidateId: string
     election: ElectionCreateNestedOneWithoutCandidatesInput
     votes?: VoteCreateNestedManyWithoutCandidateInput
   }
@@ -9298,7 +9298,7 @@ export namespace Prisma {
     bio?: string | null
     party?: string | null
     avatar?: string | null
-    idHash: string
+    onChainCandidateId: string
     electionId: string
     votes?: VoteUncheckedCreateNestedManyWithoutCandidateInput
   }
@@ -9674,7 +9674,7 @@ export namespace Prisma {
     bio?: string | null
     party?: string | null
     avatar?: string | null
-    idHash: string
+    onChainCandidateId: string
     position: PositionCreateNestedOneWithoutCandidatesInput
     election: ElectionCreateNestedOneWithoutCandidatesInput
   }
@@ -9685,7 +9685,7 @@ export namespace Prisma {
     bio?: string | null
     party?: string | null
     avatar?: string | null
-    idHash: string
+    onChainCandidateId: string
     positionId: string
     electionId: string
   }
@@ -9807,7 +9807,7 @@ export namespace Prisma {
     bio?: NullableStringFieldUpdateOperationsInput | string | null
     party?: NullableStringFieldUpdateOperationsInput | string | null
     avatar?: NullableStringFieldUpdateOperationsInput | string | null
-    idHash?: StringFieldUpdateOperationsInput | string
+    onChainCandidateId?: StringFieldUpdateOperationsInput | string
     position?: PositionUpdateOneRequiredWithoutCandidatesNestedInput
     election?: ElectionUpdateOneRequiredWithoutCandidatesNestedInput
   }
@@ -9818,7 +9818,7 @@ export namespace Prisma {
     bio?: NullableStringFieldUpdateOperationsInput | string | null
     party?: NullableStringFieldUpdateOperationsInput | string | null
     avatar?: NullableStringFieldUpdateOperationsInput | string | null
-    idHash?: StringFieldUpdateOperationsInput | string
+    onChainCandidateId?: StringFieldUpdateOperationsInput | string
     positionId?: StringFieldUpdateOperationsInput | string
     electionId?: StringFieldUpdateOperationsInput | string
   }
@@ -9918,7 +9918,7 @@ export namespace Prisma {
     bio?: string | null
     party?: string | null
     avatar?: string | null
-    idHash: string
+    onChainCandidateId: string
     positionId: string
   }
 
@@ -9986,7 +9986,7 @@ export namespace Prisma {
     bio?: NullableStringFieldUpdateOperationsInput | string | null
     party?: NullableStringFieldUpdateOperationsInput | string | null
     avatar?: NullableStringFieldUpdateOperationsInput | string | null
-    idHash?: StringFieldUpdateOperationsInput | string
+    onChainCandidateId?: StringFieldUpdateOperationsInput | string
     position?: PositionUpdateOneRequiredWithoutCandidatesNestedInput
     votes?: VoteUpdateManyWithoutCandidateNestedInput
   }
@@ -9997,7 +9997,7 @@ export namespace Prisma {
     bio?: NullableStringFieldUpdateOperationsInput | string | null
     party?: NullableStringFieldUpdateOperationsInput | string | null
     avatar?: NullableStringFieldUpdateOperationsInput | string | null
-    idHash?: StringFieldUpdateOperationsInput | string
+    onChainCandidateId?: StringFieldUpdateOperationsInput | string
     positionId?: StringFieldUpdateOperationsInput | string
     votes?: VoteUncheckedUpdateManyWithoutCandidateNestedInput
   }
@@ -10008,7 +10008,7 @@ export namespace Prisma {
     bio?: NullableStringFieldUpdateOperationsInput | string | null
     party?: NullableStringFieldUpdateOperationsInput | string | null
     avatar?: NullableStringFieldUpdateOperationsInput | string | null
-    idHash?: StringFieldUpdateOperationsInput | string
+    onChainCandidateId?: StringFieldUpdateOperationsInput | string
     positionId?: StringFieldUpdateOperationsInput | string
   }
 
@@ -10018,7 +10018,7 @@ export namespace Prisma {
     bio?: string | null
     party?: string | null
     avatar?: string | null
-    idHash: string
+    onChainCandidateId: string
     electionId: string
   }
 
@@ -10039,7 +10039,7 @@ export namespace Prisma {
     bio?: NullableStringFieldUpdateOperationsInput | string | null
     party?: NullableStringFieldUpdateOperationsInput | string | null
     avatar?: NullableStringFieldUpdateOperationsInput | string | null
-    idHash?: StringFieldUpdateOperationsInput | string
+    onChainCandidateId?: StringFieldUpdateOperationsInput | string
     election?: ElectionUpdateOneRequiredWithoutCandidatesNestedInput
     votes?: VoteUpdateManyWithoutCandidateNestedInput
   }
@@ -10050,7 +10050,7 @@ export namespace Prisma {
     bio?: NullableStringFieldUpdateOperationsInput | string | null
     party?: NullableStringFieldUpdateOperationsInput | string | null
     avatar?: NullableStringFieldUpdateOperationsInput | string | null
-    idHash?: StringFieldUpdateOperationsInput | string
+    onChainCandidateId?: StringFieldUpdateOperationsInput | string
     electionId?: StringFieldUpdateOperationsInput | string
     votes?: VoteUncheckedUpdateManyWithoutCandidateNestedInput
   }
@@ -10061,7 +10061,7 @@ export namespace Prisma {
     bio?: NullableStringFieldUpdateOperationsInput | string | null
     party?: NullableStringFieldUpdateOperationsInput | string | null
     avatar?: NullableStringFieldUpdateOperationsInput | string | null
-    idHash?: StringFieldUpdateOperationsInput | string
+    onChainCandidateId?: StringFieldUpdateOperationsInput | string
     electionId?: StringFieldUpdateOperationsInput | string
   }
 

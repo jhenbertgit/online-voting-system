@@ -6,10 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { useAccount } from "wagmi";
-import { format } from "date-fns";
-import { CalendarIcon, UserPlus2Icon, CheckCircle2Icon } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { Calendar } from "@/components/ui/calendar";
+import { UserPlus2Icon, CheckCircle2Icon } from "lucide-react";
+import { DatePickerWithRange } from "./DatePickerWithRange";
 import { ethers } from "ethers";
 import { useAuth } from "@clerk/nextjs";
 import {
@@ -19,11 +17,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import { WalletConnectCard } from "./WalletConnectCard";
 import {
   Select,
@@ -36,7 +29,7 @@ import {
 } from "@/components/ui/select";
 import { useElections, useContract } from "@/context";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useForm, FormProvider, useWatch } from "react-hook-form";
+import { useForm, FormProvider, useWatch, Controller } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -47,8 +40,10 @@ import { useEffect } from "react";
 const electionSchema = z.object({
   name: z.string().min(1, "Election name required"),
   description: z.string().optional(),
-  startDate: z.date({ required_error: "Start date is required" }),
-  endDate: z.date({ required_error: "End date is required" }),
+  dateRange: z.object({
+    from: z.date({ required_error: "Start date is required" }),
+    to: z.date({ required_error: "End date is required" }),
+  }),
 });
 
 const positionSchema = z.object({
@@ -94,25 +89,21 @@ export function CreateElection() {
     defaultValues: {
       name: "",
       description: "",
-      startDate: undefined,
-      endDate: undefined,
+      dateRange: {
+        from: undefined,
+        to: undefined,
+      },
     },
   });
 
-  const startDate = useWatch({
+  const dateRange = useWatch({
     control: electionForm.control,
-    name: "startDate",
-  });
-
-  const endDate = useWatch({
-    control: electionForm.control,
-    name: "endDate",
+    name: "dateRange",
   });
 
   useEffect(() => {
-    console.log("[DEBUG] Current startDate:", startDate);
-    console.log("[DEBUG] Current endDate:", endDate);
-  }, [startDate, endDate]);
+    console.log("[DEBUG] Current dateRange:", dateRange);
+  }, [dateRange]);
 
   const positionForm = useForm<PositionFormType>({
     resolver: zodResolver(positionSchema),
@@ -141,18 +132,35 @@ export function CreateElection() {
       if (!signer || !contract)
         throw new Error("No signer or contract available");
       const token = await getToken();
-      if (!data.startDate || !data.endDate) {
+      if (!data.dateRange.from || !data.dateRange.to) {
         throw new Error("Both start and end dates must be selected.");
       }
+      const startTime = Math.floor(data.dateRange.from.getTime() / 1000);
+      const endTime = Math.floor(data.dateRange.to.getTime() / 1000);
+
+      // Create election on blockchain
+      const tx = await contract.createElection(
+        ethers.id(data.name),
+        data.name,
+        startTime,
+        endTime,
+        ethers.ZeroHash // TODO: Add merkle root (voter IDs)
+      );
+      await tx.wait();
+
+      // Create election to database
       const startDate =
-        data.startDate instanceof Date
-          ? data.startDate.toISOString()
+        data.dateRange.from instanceof Date
+          ? data.dateRange.from.toISOString()
           : undefined;
       const endDate =
-        data.endDate instanceof Date ? data.endDate.toISOString() : undefined;
+        data.dateRange.to instanceof Date
+          ? data.dateRange.to.toISOString()
+          : undefined;
       if (!startDate || !endDate) {
         throw new Error("Invalid date range provided.");
       }
+
       const response = await fetch("/api/elections", {
         method: "POST",
         headers: {
@@ -194,6 +202,7 @@ export function CreateElection() {
       const onChainPositionId = ethers.id(data.name);
       //TODO: Add position to blockchain
 
+      // Add position to database
       const response = await fetch("/api/positions", {
         method: "POST",
         headers: {
@@ -229,14 +238,18 @@ export function CreateElection() {
       const token = await getToken();
       const idHash = ethers.id(data.name);
       const positionId = ethers.id(data.positionId);
+
+      // Add candidate on blockchain
       const tx = await contract.addCandidate(idHash, positionId);
       await tx.wait();
+
+      // Add candidate to database
       const payload = {
         name: data.name,
         bio: data.bio,
         party: data.party,
         avatar: data.image,
-        idHash: idHash,
+        onChainCandidateId: idHash,
         positionId: data.positionId,
         electionId: data.electionId,
       };
@@ -330,78 +343,19 @@ export function CreateElection() {
                     />
                   </div>
                   <div className="grid grid-cols-4 items-center gap-4">
-                    <Label className="col-span-1">Election Dates</Label>
+                    <Label className="col-span-1">Election Period</Label>
                     <div className="flex gap-4 col-span-3">
-                      {/* Start Date Picker */}
-                      <div className="flex-1">
-                        <Label>Start Date</Label>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <Button
-                              variant={"outline"}
-                              className={cn(
-                                "w-full justify-start text-left font-normal",
-                                !electionForm.watch("startDate") &&
-                                  "text-muted-foreground"
-                              )}
-                              type="button"
-                            >
-                              <CalendarIcon className="mr-2 h-4 w-4" />
-                              {electionForm.watch("startDate") ? (
-                                format(electionForm.watch("startDate"), "PPP")
-                              ) : (
-                                <span>Pick a date</span>
-                              )}
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0">
-                            <Calendar
-                              mode="single"
-                              selected={electionForm.watch("startDate")}
-                              onSelect={(date) => {
-                                if (date)
-                                  electionForm.setValue("startDate", date);
-                              }}
-                              initialFocus
-                            />
-                          </PopoverContent>
-                        </Popover>
-                      </div>
-                      {/* End Date Picker */}
-                      <div className="flex-1">
-                        <Label>End Date</Label>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <Button
-                              variant={"outline"}
-                              className={cn(
-                                "w-full justify-start text-left font-normal",
-                                !electionForm.watch("endDate") &&
-                                  "text-muted-foreground"
-                              )}
-                              type="button"
-                            >
-                              <CalendarIcon className="mr-2 h-4 w-4" />
-                              {electionForm.watch("endDate") ? (
-                                format(electionForm.watch("endDate"), "PPP")
-                              ) : (
-                                <span>Pick a date</span>
-                              )}
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0">
-                            <Calendar
-                              mode="single"
-                              selected={electionForm.watch("endDate")}
-                              onSelect={(date) => {
-                                if (date)
-                                  electionForm.setValue("endDate", date);
-                              }}
-                              initialFocus
-                            />
-                          </PopoverContent>
-                        </Popover>
-                      </div>
+                      <Controller
+                        control={electionForm.control}
+                        name="dateRange"
+                        render={({ field }) => (
+                          <DatePickerWithRange
+                            className="w-full"
+                            value={field.value}
+                            onChange={field.onChange}
+                          />
+                        )}
+                      />
                     </div>
                   </div>
                   <div className="flex justify-end gap-2">

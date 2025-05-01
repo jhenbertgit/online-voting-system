@@ -16,12 +16,12 @@ import {
 
 export function DatePickerWithRange({
   className,
-}: React.HTMLAttributes<HTMLDivElement>) {
-  const [date, setDate] = React.useState<DateRange | undefined>({
-    from: new Date(2022, 0, 20),
-    to: addDays(new Date(2022, 0, 20), 20),
-  });
-
+  value,
+  onChange,
+}: React.HTMLAttributes<HTMLDivElement> & {
+  value: DateRange | undefined;
+  onChange: (value: DateRange | undefined) => void;
+}) {
   return (
     <div className={cn("grid gap-2", className)}>
       <Popover>
@@ -31,18 +31,18 @@ export function DatePickerWithRange({
             variant={"outline"}
             className={cn(
               "w-[300px] justify-start text-left font-normal",
-              !date && "text-muted-foreground"
+              !value && "text-muted-foreground"
             )}
           >
             <CalendarIcon />
-            {date?.from ? (
-              date.to ? (
+            {value?.from ? (
+              value.to ? (
                 <>
-                  {format(date.from, "LLL dd, y")} -{" "}
-                  {format(date.to, "LLL dd, y")}
+                  {format(value.from, "LLL dd, y")} -{" "}
+                  {format(value.to, "LLL dd, y")}
                 </>
               ) : (
-                format(date.from, "LLL dd, y")
+                format(value.from, "LLL dd, y")
               )
             ) : (
               <span>Pick a date</span>
@@ -53,9 +53,9 @@ export function DatePickerWithRange({
           <Calendar
             initialFocus
             mode="range"
-            defaultMonth={date?.from}
-            selected={date}
-            onSelect={setDate}
+            defaultMonth={value?.from}
+            selected={value}
+            onSelect={onChange}
             numberOfMonths={2}
           />
         </PopoverContent>
