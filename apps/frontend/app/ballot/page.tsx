@@ -20,6 +20,10 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { useForm, Controller } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 // Step order (can be changed, but keeps the sequence)
 const VOTE_SEQUENCE = [
@@ -39,46 +43,91 @@ function getOrderedPositions(positions: any[]) {
   return [...positions].sort((a, b) => order(a.name) - order(b.name));
 }
 
+// Type definitions
+interface Candidate {
+  id: string;
+  name: string;
+  party?: string;
+  bio?: string;
+  avatar?: string;
+  avatarUrl?: string;
+  positionId: string;
+}
+
+interface Position {
+  id: string;
+  name: string;
+}
+
+interface BallotFormValues {
+  [positionId: string]: string | string[];
+}
+
+// Zod schema for ballot validation
+const ballotSchema = z.record(
+  z.string(),
+  z.union([z.string(), z.array(z.string())])
+);
+
 export default function BallotPage() {
   const { elections, loading, error } = useElections();
   const { getToken } = useAuth();
-  const [step, setStep] = useState(0); // index in orderedPositions
-  const [ballot, setBallot] = useState<any>({}); // { positionId: candidateId }
+  const [step, setStep] = useState(0);
   const [review, setReview] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [orderedPositions, setOrderedPositions] = useState<any[]>([]);
+  const [orderedPositions, setOrderedPositions] = useState<Position[]>([]);
   const [userId, setUserId] = useState<string>("");
   const [activeElectionId, setActiveElectionId] = useState<string>("");
   const [open, setOpen] = useState(false);
+  const queryClient = useQueryClient();
 
-  // Keep a reference to the current election for easy access throughout the component
   const currentElection =
     elections.find((el: any) => el.id === activeElectionId) || elections[0];
 
-  // Prepare positions/candidates for the selected election
   useEffect(() => {
     if (!elections?.length) return;
-    // Default to first election if not set
     const election = currentElection;
     if (!activeElectionId && elections[0]) setActiveElectionId(elections[0].id);
-
     if (!election) return;
     const positions = getOrderedPositions(election.positions || []);
     setOrderedPositions(positions);
-    setStep(0); // Reset stepper when election changes
+    setStep(0);
     setReview(false);
     setUserId("");
   }, [elections, activeElectionId]);
 
-  // Restore cached ballot if available
+  // React Hook Form setup
+  const {
+    control,
+    handleSubmit,
+    setValue,
+    getValues,
+    formState: { errors },
+    reset,
+    watch,
+  } = useForm<BallotFormValues>({
+    resolver: zodResolver(ballotSchema),
+    defaultValues: {},
+  });
+
+  // Fetch cached ballot
+  const { data: ballotCacheData, isSuccess: isBallotCacheSuccess } = useQuery<
+    { ballot: Record<string, unknown> },
+    Error
+  >({
+    queryKey: ["ballot-cache", userId],
+    enabled: !!userId,
+    queryFn: async (): Promise<{ ballot: Record<string, unknown> }> => {
+      const res = await fetch(`/api/ballot-cache?userId=${userId}`);
+      return res.json();
+    },
+    placeholderData: { ballot: {} },
+  });
+
   useEffect(() => {
-    if (!userId) return;
-    fetch(`/api/ballot-cache?userId=${userId}`)
-      .then((r) => r.json())
-      .then((res) => {
-        if (res.ballot) setBallot(res.ballot);
-      });
-  }, [userId]);
+    if (isBallotCacheSuccess && ballotCacheData?.ballot) {
+      reset(ballotCacheData.ballot as BallotFormValues);
+    }
+  }, [isBallotCacheSuccess, ballotCacheData, reset]);
 
   // Cache ballot after each change
   useEffect(() => {
@@ -91,10 +140,37 @@ export default function BallotPage() {
           "Content-Type": "application/json",
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({ userId, ballot }),
+        body: JSON.stringify({ userId, ballot: getValues() }),
       });
     })();
-  }, [ballot, userId, getToken]);
+  }, [getValues, userId, getToken]);
+
+  // Submit ballot mutation
+  const submitBallot = useMutation({
+    mutationFn: async (ballot: BallotFormValues) => {
+      const token = await getToken();
+      // TODO: Next.js proxy API route for submit-ballot
+      // Submit to blockchain
+      // const res = await fetch("/api/submit-ballot", {
+      //   method: "POST",
+      //   headers: {
+      //     "Content-Type": "application/json",
+      //     ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      //   },
+      //   body: JSON.stringify({ userId, ballot }),
+      // });
+      // if (!res.ok) throw new Error("Failed to submit ballot");
+      // return res.json();
+
+      console.log("Submitted ballot:", ballot);
+    },
+    onSuccess: () => {
+      toast.success("Vote submitted successfully");
+    },
+    onError: () => {
+      toast.error("Failed to submit vote");
+    },
+  });
 
   if (loading) {
     return <div className="container mx-auto py-8 px-4">Loading...</div>;
@@ -147,10 +223,9 @@ export default function BallotPage() {
         <div className="mb-6 space-y-4">
           {orderedPositions.map((pos) => {
             const isSenator = pos.name.toLowerCase().includes("senator");
-            const selected = ballot[pos.id];
+            const selected = getValues()[pos.id];
             let displayValue = null;
             if (isSenator && Array.isArray(selected)) {
-              // Multiple selected senators
               const selectedCandidates = (
                 currentElection.candidates || []
               ).filter((c: any) => selected.includes(c.id));
@@ -190,8 +265,12 @@ export default function BallotPage() {
           </Button>
           <AlertDialog open={open} onOpenChange={setOpen}>
             <AlertDialogTrigger asChild>
-              <Button className="flex-1" disabled={submitting} size="lg">
-                {submitting ? "Submitting..." : "Confirm & Submit"}
+              <Button
+                className="flex-1"
+                disabled={submitBallot.isPending}
+                size="lg"
+              >
+                {submitBallot.isPending ? "Submitting..." : "Confirm & Submit"}
               </Button>
             </AlertDialogTrigger>
             <AlertDialogContent>
@@ -205,18 +284,10 @@ export default function BallotPage() {
               <AlertDialogFooter>
                 <AlertDialogCancel>Cancel</AlertDialogCancel>
                 <AlertDialogAction
-                  onClick={async () => {
-                    setSubmitting(true);
+                  onClick={handleSubmit((data) => {
                     setOpen(false);
-                    // TODO: Implement actual submit logic here
-                    // blockchain
-                    //off-chain (database)
-                    console.log("your ballot", ballot);
-                    setTimeout(() => {
-                      setSubmitting(false);
-                      toast.success("Vote submitted successfully");
-                    }, 1200);
-                  }}
+                    submitBallot.mutate(data);
+                  })}
                 >
                   Yes, submit
                 </AlertDialogAction>
@@ -236,23 +307,20 @@ export default function BallotPage() {
         )
       : [];
   const canGoBack = step > 0;
-
-  // Helper to check if current position is senator
   const isSenatorPosition =
     position && position.name.toLowerCase().includes("senator");
   const SENATOR_MAX_SELECTION = 12;
 
   // For senator, store an array of selected candidate ids; for others, a single id
   const selectedSenatorIds = isSenatorPosition
-    ? ballot[position.id] || []
+    ? getValues()[position.id] || []
     : undefined;
-
+  const selectedValue = watch(position.id);
   const canGoNext = isSenatorPosition
     ? selectedSenatorIds &&
       selectedSenatorIds.length > 0 &&
       selectedSenatorIds.length <= SENATOR_MAX_SELECTION
-    : ballot[position.id];
-
+    : !!selectedValue;
   const isLast = step === orderedPositions.length - 1;
 
   return (
@@ -277,104 +345,165 @@ export default function BallotPage() {
           {position?.name.toUpperCase()}
         </div>
         {candidates.length ? (
-          <RadioGroup
-            value={isSenatorPosition ? undefined : ballot[position.id] || ""}
-            onValueChange={(val) => {
-              if (isSenatorPosition) return; // ignore for senator, handled below
-              setBallot((prev: any) => ({ ...prev, [position.id]: val }));
-            }}
-            className="flex flex-col gap-4"
-          >
-            {candidates.map((candidate: any) => {
-              const isSelected = isSenatorPosition
-                ? selectedSenatorIds.includes(candidate.id)
-                : ballot[position.id] === candidate.id;
-              return (
-                <div
-                  key={candidate.id}
-                  className={`border rounded-xl p-4 flex items-center gap-4 transition-shadow duration-150 ${
-                    isSelected
-                      ? "border-primary bg-primary/10 shadow-lg"
-                      : "hover:border-primary/50 hover:shadow"
-                  }`}
-                >
-                  {isSenatorPosition ? (
-                    <input
-                      type="checkbox"
-                      checked={isSelected}
-                      disabled={
-                        !isSelected &&
-                        selectedSenatorIds.length >= SENATOR_MAX_SELECTION
-                      }
-                      onChange={(e) => {
-                        setBallot((prev: any) => {
-                          const prevArr = prev[position.id] || [];
-                          if (e.target.checked) {
-                            // add
-                            if (prevArr.length < SENATOR_MAX_SELECTION) {
-                              return {
-                                ...prev,
-                                [position.id]: [...prevArr, candidate.id],
-                              };
+          <Controller
+            control={control}
+            name={position.id}
+            render={({ field }) =>
+              isSenatorPosition ? (
+                <div className="flex flex-col gap-4">
+                  {candidates.map((candidate: Candidate) => {
+                    const isSelected =
+                      Array.isArray(field.value) &&
+                      field.value.includes(candidate.id);
+                    return (
+                      <div
+                        key={candidate.id}
+                        className={`border rounded-xl p-4 flex items-center gap-4 transition-shadow duration-150 ${
+                          isSelected
+                            ? "border-primary bg-primary/10 shadow-lg"
+                            : "hover:border-primary/50 hover:shadow"
+                        }`}
+                      >
+                        <label
+                          htmlFor={`senator-checkbox-${candidate.id}`}
+                          className="flex items-center gap-4 w-full cursor-pointer"
+                        >
+                          <input
+                            type="checkbox"
+                            id={`senator-checkbox-${candidate.id}`}
+                            checked={isSelected}
+                            disabled={
+                              !isSelected &&
+                              Array.isArray(field.value) &&
+                              field.value.length >= SENATOR_MAX_SELECTION
                             }
-                            return prev;
-                          } else {
-                            // remove
-                            return {
-                              ...prev,
-                              [position.id]: prevArr.filter(
-                                (id: string) => id !== candidate.id
-                              ),
-                            };
-                          }
-                        });
-                      }}
-                      className="mr-4 size-5 accent-primary"
-                    />
-                  ) : (
-                    <RadioGroupItem
-                      value={candidate.id}
-                      id={candidate.id}
-                      className="mr-4"
-                    />
+                            onChange={(e) => {
+                              let newValue = Array.isArray(field.value)
+                                ? [...field.value]
+                                : [];
+                              if (e.target.checked) {
+                                if (newValue.length < SENATOR_MAX_SELECTION) {
+                                  newValue.push(candidate.id);
+                                }
+                              } else {
+                                newValue = newValue.filter(
+                                  (id) => id !== candidate.id
+                                );
+                              }
+                              field.onChange(newValue);
+                            }}
+                            className="mr-4 size-5 accent-primary"
+                          />
+                          <Avatar className="size-12">
+                            {candidate.avatar || candidate.avatarUrl ? (
+                              <AvatarImage
+                                src={candidate.avatar || candidate.avatarUrl}
+                                alt={candidate.name}
+                              />
+                            ) : (
+                              <AvatarFallback>
+                                {candidate.name
+                                  .split(" ")
+                                  .map((n: string) => n[0])
+                                  .join("")}
+                              </AvatarFallback>
+                            )}
+                          </Avatar>
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="font-semibold text-lg">
+                                {candidate.name}
+                              </span>
+                              {candidate.party && (
+                                <span className="ml-2 px-2 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-medium tracking-wide border border-primary/20">
+                                  {candidate.party}
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-muted-foreground text-sm">
+                              {candidate.bio || ""}
+                            </div>
+                          </div>
+                        </label>
+                      </div>
+                    );
+                  })}
+                  {errors[position.id] && (
+                    <div className="text-red-500 text-sm mt-1">
+                      {errors[position.id]?.message?.toString()}
+                    </div>
                   )}
-                  <Avatar className="size-12">
-                    {candidate.avatar || candidate.avatarUrl ? (
-                      <AvatarImage
-                        src={candidate.avatar || candidate.avatarUrl}
-                        alt={candidate.name}
-                      />
-                    ) : (
-                      <AvatarFallback>
-                        {candidate.name
-                          .split(" ")
-                          .map((n: string) => n[0])
-                          .join("")}
-                      </AvatarFallback>
-                    )}
-                  </Avatar>
-                  <label
-                    htmlFor={candidate.id}
-                    className="cursor-pointer flex-1"
-                  >
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="font-semibold text-lg">
-                        {candidate.name}
-                      </span>
-                      {candidate.party && (
-                        <span className="ml-2 px-2 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-medium tracking-wide border border-primary/20">
-                          {candidate.party}
-                        </span>
-                      )}
-                    </div>
-                    <div className="text-muted-foreground text-sm">
-                      {candidate.bio || ""}
-                    </div>
-                  </label>
                 </div>
-              );
-            })}
-          </RadioGroup>
+              ) : (
+                <RadioGroup
+                  value={
+                    typeof field.value === "string"
+                      ? field.value
+                      : Array.isArray(field.value)
+                        ? (field.value[0] ?? "")
+                        : ""
+                  }
+                  onValueChange={field.onChange}
+                  className="flex flex-col gap-4"
+                >
+                  {candidates.map((candidate: Candidate) => (
+                    <div
+                      key={candidate.id}
+                      className={`border rounded-xl p-4 flex items-center gap-4 transition-shadow duration-150 ${
+                        field.value === candidate.id
+                          ? "border-primary bg-primary/10 shadow-lg"
+                          : "hover:border-primary/50 hover:shadow"
+                      }`}
+                    >
+                      <RadioGroupItem
+                        value={candidate.id}
+                        id={candidate.id}
+                        className="mr-4"
+                      />
+                      <Avatar className="size-12">
+                        {candidate.avatar || candidate.avatarUrl ? (
+                          <AvatarImage
+                            src={candidate.avatar || candidate.avatarUrl}
+                            alt={candidate.name}
+                          />
+                        ) : (
+                          <AvatarFallback>
+                            {candidate.name
+                              .split(" ")
+                              .map((n: string) => n[0])
+                              .join("")}
+                          </AvatarFallback>
+                        )}
+                      </Avatar>
+                      <label
+                        htmlFor={candidate.id}
+                        className="cursor-pointer flex-1"
+                      >
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="font-semibold text-lg">
+                            {candidate.name}
+                          </span>
+                          {candidate.party && (
+                            <span className="ml-2 px-2 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-medium tracking-wide border border-primary/20">
+                              {candidate.party}
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-muted-foreground text-sm">
+                          {candidate.bio || ""}
+                        </div>
+                      </label>
+                    </div>
+                  ))}
+                  {errors[position.id] && (
+                    <div className="text-red-500 text-sm mt-1">
+                      {errors[position.id]?.message?.toString()}
+                    </div>
+                  )}
+                </RadioGroup>
+              )
+            }
+          />
         ) : (
           <div className="italic text-muted-foreground">
             No candidates for this position.

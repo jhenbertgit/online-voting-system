@@ -42,7 +42,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const { getToken } = await auth();
-    const token = getToken();
+    const token = await getToken();
     const backendUrl =
       process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5000";
     const body = await req.text();
