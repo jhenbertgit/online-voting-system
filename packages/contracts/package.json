@@ -5,7 +5,8 @@
   "main": "scripts/deploy.ts",
   "scripts": {
     "test": "hardhat test",
-    "deploy": "ts-node scripts/deploy.ts"
+    "deploy": "ts-node scripts/deploy.ts",
+    "compile": "hardhat compile"
   },
   "keywords": [],
   "author": "",
