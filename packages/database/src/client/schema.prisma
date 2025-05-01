@@ -1,0 +1,102 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          String   @id @default(uuid())
+  clerkUserId String   @unique
+  email       String   @unique
+  role        Role     @default(voter)
+  votes       Vote[]
+  createdAt   DateTime @default(now())
+}
+
+model Election {
+  id                String     @id @default(uuid())
+  name              String
+  description       String?    @db.Text
+  startDate         DateTime
+  endDate           DateTime
+  approved          Boolean    @default(false)
+  merkleRoot        String     @unique // allowed voter IDs sync in contract
+  onChainElectionId String?    @unique // On-chain election ID (uint256)
+  positions         Position[]
+  votes             Vote[]
+  createdAt         DateTime   @default(now())
+
+  // Added for blockchain integration
+  contractAddress String // VotingGuardian contract address
+  adminAddress    String // Election admin wallet address
+  candidateTree   Json? // Merkle tree structure for candidates
+  candidates      Candidate[]
+
+  @@index([startDate])
+  @@index([endDate])
+  @@index([merkleRoot])
+}
+
+model Position {
+  id                String      @id @default(uuid())
+  name              String
+  description       String?     @db.Text
+  onChainPositionId String?     @unique // On-chain position ID (uint256)
+  election          Election    @relation(fields: [electionId], references: [id])
+  electionId        String
+  candidates        Candidate[]
+  votes             Vote[]
+
+  @@index([onChainPositionId])
+  @@index([electionId])
+}
+
+model Candidate {
+  id         String   @id @default(uuid())
+  name       String
+  bio        String?  @db.Text
+  party      String?
+  avatar     String?
+  idHash     String   @unique // keccak256(candidateId) for blockchain
+  position   Position @relation(fields: [positionId], references: [id])
+  positionId String
+  election   Election @relation(fields: [electionId], references: [id])
+  electionId String
+  votes      Vote[]
+
+  @@index([idHash, positionId, electionId])
+}
+
+model Vote {
+  id              String    @id @default(uuid())
+  election        Election  @relation(fields: [electionId], references: [id])
+  electionId      String
+  position        Position  @relation(fields: [positionId], references: [id])
+  positionId      String
+  candidate       Candidate @relation(fields: [candidateId], references: [id])
+  candidateId     String
+  candidateHash   String // Reference to Candidate.idHash
+  user            User      @relation(fields: [userId], references: [id])
+  userId          String
+  voterCommitment String    @unique // keccak256(userId + secret)
+  txHash          String?   @unique
+  createdAt       DateTime  @default(now())
+
+  @@unique([electionId, voterCommitment])
+}
+
+enum Role {
+  admin
+  election_officer
+  voter
+}

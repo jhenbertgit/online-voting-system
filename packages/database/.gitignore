@@ -1,9 +1,7 @@
 node_modules
 # Keep environment variables out of version control
-.env
-
-# Generated client
-src/client/*
+.env*
+!.env.example
 
 # Prisma
 prisma/migrations/*
