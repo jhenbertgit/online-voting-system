@@ -1,16 +1,29 @@
 "use client";
-
 import React, {
   createContext,
   useContext,
   useEffect,
   useState,
   ReactNode,
+  JSX,
 } from "react";
 import { useAuth } from "@clerk/nextjs";
+import { Candidate, Election, Position, Vote } from "database/src/client";
 
+/**
+ * ElectionType extends Election with related data.
+ */
+interface ElectionType extends Election {
+  positions: Position[];
+  candidates: Candidate[];
+  votes: Vote[];
+}
+
+/**
+ * ElectionsContextType defines the context shape for election data and actions.
+ */
 interface ElectionsContextType {
-  elections: any[];
+  elections: ElectionType[];
   loading: boolean;
   error: string | null;
   refresh: () => void;
@@ -20,27 +33,34 @@ const ElectionsContext = createContext<ElectionsContextType | undefined>(
   undefined
 );
 
-// Utility for cache key
+/**
+ * Cache key for elections data.
+ * @constant
+ */
 const ELECTIONS_CACHE_KEY = "elections:all";
 
-export function ElectionsProvider({ children }: { children: ReactNode }) {
+/**
+ * ElectionsProvider supplies election data and refresh logic to descendants.
+ * @param props - Children React nodes.
+ * @returns {JSX.Element}
+ */
+function ElectionsProvider({ children }: { children: ReactNode }): JSX.Element {
   const { getToken } = useAuth();
-  const [elections, setElections] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [elections, setElections] = useState<ElectionType[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Try to get elections from backend cache first, then fallback to API
-  const fetchElections = async () => {
+  /**
+   * Fetches elections from cache or API and updates state.
+   */
+  const fetchElections = async (): Promise<void> => {
     setLoading(true);
     setError(null);
     try {
-      // Use Next.js API proxy endpoints
-      // 1. Try to get from cache API (proxy)
-      let cached: any[] | null = null;
+      let cached: unknown[] | null = null;
       if (!ELECTIONS_CACHE_KEY) {
         setLoading(false);
-        // Optionally, you could fallback to the API here immediately
-        return; // Uncomment to stop here
+        return;
       } else {
         try {
           const cacheRes = await fetch(`/api/cache/${ELECTIONS_CACHE_KEY}`);
@@ -48,23 +68,19 @@ export function ElectionsProvider({ children }: { children: ReactNode }) {
             const cacheData = await cacheRes.json();
             if (cacheData.value) {
               cached = JSON.parse(cacheData.value);
-              setElections(cached || []);
+              setElections(cached as ElectionType[]);
               setLoading(false);
               return;
             }
           }
-        } catch (err) {
+        } catch {
           // ignore cache errors, fallback to API
         }
       }
-
-      // 2. Fallback: Fetch live from elections API (via Next.js proxy)
       const res = await fetch("/api/elections");
       if (!res.ok) throw new Error("Failed to fetch elections");
       const data = await res.json();
-      setElections(data);
-
-      // 3. Store in backend cache for next time (proxy)
+      setElections(data as ElectionType[]);
       try {
         await fetch(`/api/cache`, {
           method: "POST",
@@ -73,9 +89,9 @@ export function ElectionsProvider({ children }: { children: ReactNode }) {
             key: ELECTIONS_CACHE_KEY,
             value: JSON.stringify(data),
             ttlSeconds: 900,
-          }), // cache for 15 min
+          }),
         });
-      } catch (e) {
+      } catch {
         // ignore cache set errors
       }
     } catch (err) {
@@ -99,10 +115,17 @@ export function ElectionsProvider({ children }: { children: ReactNode }) {
   );
 }
 
-export function useElections() {
+/**
+ * useElections provides access to the ElectionsContext.
+ * @returns {ElectionsContextType}
+ * @throws Error if used outside ElectionsProvider.
+ */
+function useElections(): ElectionsContextType {
   const context = useContext(ElectionsContext);
   if (!context) {
     throw new Error("useElections must be used within an ElectionsProvider");
   }
   return context;
 }
+
+export { ElectionsProvider, useElections };

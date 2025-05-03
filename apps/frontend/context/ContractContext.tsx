@@ -1,12 +1,23 @@
 "use client";
-
-import React, { createContext, useContext, useMemo, useCallback } from "react";
+import React, {
+  createContext,
+  useContext,
+  useMemo,
+  useCallback,
+  useState,
+  useEffect,
+  ReactNode,
+  JSX,
+} from "react";
 import { useConfig, useAccount, useAccountEffect } from "wagmi";
 import { getEthersSigner } from "@/lib/web3-utils";
 import { VotingGuardianABI } from "@/abis";
 import { ethers } from "ethers";
 
-interface ContractContextType {
+/**
+ * ContractContextType defines the context shape for Ethereum contract access.
+ */
+export interface ContractContextType {
   contract: ethers.Contract | null;
   signer: ethers.Signer | null;
   isReady: boolean;
@@ -16,15 +27,21 @@ const ContractContext = createContext<ContractContextType | undefined>(
   undefined
 );
 
-export function ContractProvider({ children }: { children: React.ReactNode }) {
+/**
+ * ContractProvider supplies contract and signer to descendants.
+ * @param props - Children React nodes.
+ * @returns {JSX.Element}
+ */
+function ContractProvider({ children }: { children: ReactNode }): JSX.Element {
   const config = useConfig();
   const { address, isConnected } = useAccount();
+  const [signer, setSigner] = useState<ethers.Signer | null>(null);
+  const [contract, setContract] = useState<ethers.Contract | null>(null);
 
-  const [signer, setSigner] = React.useState<ethers.Signer | null>(null);
-  const [contract, setContract] = React.useState<ethers.Contract | null>(null);
-
-  // Setup signer and contract when wallet connects
-  const setup = useCallback(async () => {
+  /**
+   * Sets up signer and contract when wallet connects.
+   */
+  const setup = useCallback(async (): Promise<void> => {
     if (!isConnected) {
       setSigner(null);
       setContract(null);
@@ -33,8 +50,13 @@ export function ContractProvider({ children }: { children: React.ReactNode }) {
     const _signer = await getEthersSigner(config);
     setSigner(_signer);
     if (_signer) {
+      const contractAddress = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS;
+      if (!contractAddress) {
+        setContract(null);
+        return;
+      }
       const _contract = new ethers.Contract(
-        process.env.NEXT_PUBLIC_CONTRACT_ADDRESS!,
+        contractAddress,
         VotingGuardianABI,
         _signer
       );
@@ -44,14 +66,13 @@ export function ContractProvider({ children }: { children: React.ReactNode }) {
     }
   }, [config, isConnected]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     setup();
-    // Only rerun if config, address, or isConnected changes
   }, [setup, address]);
 
   useAccountEffect({
     onConnect() {
-      setup(); // Refresh signer/contract when wallet connects
+      setup();
     },
     onDisconnect() {
       setSigner(null);
@@ -59,7 +80,7 @@ export function ContractProvider({ children }: { children: React.ReactNode }) {
     },
   });
 
-  const value = useMemo(
+  const value = useMemo<ContractContextType>(
     () => ({
       contract,
       signer,
@@ -75,9 +96,16 @@ export function ContractProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
-export function useContract() {
+/**
+ * useContract provides access to the ContractContext.
+ * @returns {ContractContextType}
+ * @throws Error if used outside ContractProvider.
+ */
+function useContract(): ContractContextType {
   const ctx = useContext(ContractContext);
   if (!ctx)
     throw new Error("useContract must be used within a ContractProvider");
   return ctx;
 }
+
+export { ContractProvider, useContract };

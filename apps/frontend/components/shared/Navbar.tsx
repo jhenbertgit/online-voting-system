@@ -3,13 +3,17 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
+import { type JSX } from "react";
 import { X, Menu } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
-import { SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
-import { WalletConnectButton } from "./WalletConnectCard";
 
-export default function Navbar() {
+/**
+ * Navbar is the main top navigation bar for SecureVote.
+ * Features responsive navigation, mobile menu, and authentication buttons.
+ * @returns {JSX.Element} The navigation bar.
+ */
+export default function Navbar(): JSX.Element {
   const pathname = usePathname();
   const [isScrolled, setIsScrolled] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
@@ -47,7 +51,7 @@ export default function Navbar() {
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2 font-bold text-lg">
           <ShieldCheckIcon className="h-6 w-6 text-blue-600" />
-          <span>SecureVote</span>
+          <span>VoteGuard</span>
         </Link>
 
         {/* Desktop Nav */}
@@ -68,18 +72,12 @@ export default function Navbar() {
         {/* Desktop Auth Buttons */}
 
         <div className="hidden md:flex items-center gap-2">
-          <SignedOut>
-            <Button variant="ghost" asChild>
-              <Link href="/sign-in">Sign In</Link>
-            </Button>
-            <Button asChild>
-              <Link href="/sign-up">Register</Link>
-            </Button>
-          </SignedOut>
-
-          <SignedIn>
-            <UserButton afterSwitchSessionUrl="/" showName />
-          </SignedIn>
+          <Button variant="ghost" asChild>
+            <Link href="/sign-in">Sign In</Link>
+          </Button>
+          <Button asChild>
+            <Link href="/sign-up">Register</Link>
+          </Button>
         </div>
 
         {/* Mobile Hamburger */}
@@ -114,18 +112,12 @@ export default function Navbar() {
 
               {/* Mobile Auth Buttons */}
               <div className="mt-auto pb-8 space-y-4">
-                <SignedOut>
-                  <Button variant="outline" className="w-full" asChild>
-                    <Link href="/sign-in">Sign In</Link>
-                  </Button>
-                  <Button className="w-full" asChild>
-                    <Link href="/sign-up">Register</Link>
-                  </Button>
-                </SignedOut>
-
-                <SignedIn>
-                  <UserButton afterSwitchSessionUrl="/" />
-                </SignedIn>
+                <Button variant="outline" className="w-full" asChild>
+                  <Link href="/sign-in">Sign In</Link>
+                </Button>
+                <Button className="w-full" asChild>
+                  <Link href="/sign-up">Register</Link>
+                </Button>
               </div>
             </div>
           </SheetContent>
@@ -135,7 +127,12 @@ export default function Navbar() {
   );
 }
 
-function ShieldCheckIcon(props: React.SVGProps<SVGSVGElement>) {
+/**
+ * ShieldCheckIcon renders a shield with a checkmark for the VoteGuard logo.
+ * @param props - SVG props.
+ * @returns {JSX.Element} The SVG icon.
+ */
+function ShieldCheckIcon(props: React.SVGProps<SVGSVGElement>): JSX.Element {
   return (
     <svg
       {...props}

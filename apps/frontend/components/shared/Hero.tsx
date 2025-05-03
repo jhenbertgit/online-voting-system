@@ -1,8 +1,13 @@
 "use client";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
+import type { JSX } from "react";
 
-export default function Hero() {
+/**
+ * Hero displays the landing page hero section with call-to-action for voting.
+ * @returns {JSX.Element} The hero section.
+ */
+export default function Hero(): JSX.Element {
   const router = useRouter();
 
   return (

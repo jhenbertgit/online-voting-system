@@ -1,9 +1,14 @@
 "use client";
+import type { JSX } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useRouter } from "next/navigation";
 
-export default function CTA() {
+/**
+ * CTA displays a call-to-action section for voting or registration.
+ * @returns {JSX.Element} The CTA section.
+ */
+export default function CTA(): JSX.Element {
   const router = useRouter();
 
   return (

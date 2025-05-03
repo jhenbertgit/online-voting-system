@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import type { JSX } from "react"; // Explicitly import JSX type
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -72,7 +73,8 @@ const steps = [
   { label: "Candidates", icon: <UserPlus2Icon className="w-5 h-5" /> },
 ];
 
-export function CreateElection() {
+export function CreateElection(): JSX.Element {
+  // Explicitly define return type
   const { address } = useAccount();
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<"election" | "position" | "candidate">(
@@ -587,10 +589,10 @@ export function CreateElection() {
                           <SelectLabel>Position</SelectLabel>
                           {elections
                             .find(
-                              (el: any) =>
+                              (el) =>
                                 el.id === candidateForm.watch("electionId")
                             )
-                            ?.positions.map((pos: any) => (
+                            ?.positions.map((pos) => (
                               <SelectItem key={pos.id} value={pos.id}>
                                 {pos.name}
                               </SelectItem>

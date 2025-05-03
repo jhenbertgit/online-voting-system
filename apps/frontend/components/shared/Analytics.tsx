@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import type { JSX } from "react";
 import { useElections } from "@/context/ElectionsContext";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import {
@@ -20,7 +21,12 @@ const COLORS = ["#0088FE", "#00C49F"];
 
 type AnalyticsProps = React.HTMLAttributes<HTMLDivElement>;
 
-export function Analytics(props: AnalyticsProps): React.JSX.Element {
+/**
+ * Analytics displays analytics cards for each election with charts and statistics.
+ * @param {AnalyticsProps} props - Additional HTML attributes for the root div.
+ * @returns {JSX.Element} The analytics dashboard section.
+ */
+export function Analytics(props: AnalyticsProps): JSX.Element {
   const { elections, loading, error } = useElections();
 
   // Render a card for each election, with pie chart and respective bar charts below

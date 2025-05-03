@@ -1,4 +1,5 @@
 import { Card } from "@/components/ui/card";
+import type { JSX } from "react";
 
 const features = [
   {
@@ -18,11 +19,17 @@ const features = [
   },
 ];
 
-export default function Features() {
+/**
+ * Features displays key benefits and features of the voting system.
+ * @returns {JSX.Element} The features section.
+ */
+export default function Features(): JSX.Element {
   return (
     <section className="py-12 bg-gray-50 dark:bg-gray-800">
       <div className="container px-4 md:px-6">
-        <h2 className="text-3xl font-bold text-center mb-12">Why Trust Our System?</h2>
+        <h2 className="text-3xl font-bold text-center mb-12">
+          Why Trust Our System?
+        </h2>
         <div className="grid gap-6 md:grid-cols-3">
           {features.map((feature) => (
             <Card key={feature.title} className="p-6 text-center">

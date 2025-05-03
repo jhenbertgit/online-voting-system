@@ -1,10 +1,15 @@
 import * as React from "react";
+import type { JSX } from "react";
 import { Connector, useConnect } from "wagmi";
 import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
 import { Wallet2Icon, Loader2 } from "lucide-react";
 
-export function WalletOptions() {
+/**
+ * WalletOptions renders a list of wallet connector options for the user to connect.
+ * @returns {JSX.Element} Wallet connector options UI.
+ */
+export function WalletOptions(): JSX.Element {
   const { connectors, connect } = useConnect();
 
   return (
@@ -20,13 +25,20 @@ export function WalletOptions() {
   );
 }
 
+/**
+ * WalletOption renders a single wallet connector button.
+ * @param {object} props - Props for WalletOption.
+ * @param {Connector} props.connector - Wallet connector instance.
+ * @param {() => void} props.onClick - Click handler for connecting.
+ * @returns {JSX.Element} Wallet connector button.
+ */
 function WalletOption({
   connector,
   onClick,
 }: {
   connector: Connector;
   onClick: () => void;
-}) {
+}): JSX.Element {
   const [ready, setReady] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
 

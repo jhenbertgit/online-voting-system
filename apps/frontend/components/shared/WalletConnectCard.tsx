@@ -1,4 +1,5 @@
 import React from "react";
+import type { JSX } from "react";
 import { useAccount } from "wagmi";
 import { Account } from "./Account";
 import { WalletOptions } from "./WalletOption";
@@ -13,7 +14,12 @@ import {
 } from "@/components/ui/tooltip";
 import { Wallet2Icon } from "lucide-react";
 
-export function WalletConnectCard() {
+/**
+ * WalletConnectCard displays the wallet connection status and options.
+ * Shows the connected account or prompts to connect a wallet.
+ * @returns {JSX.Element} The wallet connection card component.
+ */
+export function WalletConnectCard(): JSX.Element {
   const { isConnected } = useAccount();
 
   if (isConnected) {

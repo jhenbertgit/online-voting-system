@@ -4,9 +4,9 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
 import { Toaster } from "@/components/ui/sonner";
 import { WagmiProvider } from "@/components/shared/WagmiProvider";
-import Navbar from "@/components/shared/Navbar";
 import { ElectionsProvider } from "@/context/ElectionsContext";
 import { ContractProvider } from "@/context/ContractContext";
+import LayoutWithConditionalNavbar from "@/components/shared/LayoutWithConditionalNavbar";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -30,41 +30,33 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <>
-      <ClerkProvider
-        appearance={{
-          variables: {
-            colorPrimary: "#624cf5",
-            fontFamily: geistSans.variable,
-          },
-          elements: {
-            footer: "hidden",
-          },
-        }}
-      >
-        <WagmiProvider>
-          <ElectionsProvider>
-            <ContractProvider>
-              <html lang="en">
-                <body
-                  className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-                >
-                  <div className="min-h-screen flex flex-col">
-                    <Navbar />
-                    {children}
-                    <footer className="py-6 border-t">
-                      <div className="container text-center text-sm text-gray-500">
-                        2025 SecureVote. All rights reserved.
-                      </div>
-                    </footer>
-                  </div>
-                  <Toaster richColors position="top-right" />
-                </body>
-              </html>
-            </ContractProvider>
-          </ElectionsProvider>
-        </WagmiProvider>
-      </ClerkProvider>
-    </>
+    <ClerkProvider
+      appearance={{
+        variables: {
+          colorPrimary: "#624cf5",
+          fontFamily: geistSans.variable,
+        },
+        elements: {
+          footer: "hidden",
+        },
+      }}
+    >
+      <WagmiProvider>
+        <ElectionsProvider>
+          <ContractProvider>
+            <html lang="en">
+              <body
+                className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+              >
+                <LayoutWithConditionalNavbar>
+                  {children}
+                </LayoutWithConditionalNavbar>
+                <Toaster richColors position="top-right" />
+              </body>
+            </html>
+          </ContractProvider>
+        </ElectionsProvider>
+      </WagmiProvider>
+    </ClerkProvider>
   );
 }

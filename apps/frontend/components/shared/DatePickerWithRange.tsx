@@ -1,7 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { addDays, format } from "date-fns";
+import type { JSX } from "react";
+import { format } from "date-fns";
 import { CalendarIcon } from "lucide-react";
 import { DateRange } from "react-day-picker";
 
@@ -14,6 +15,14 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 
+/**
+ * DatePickerWithRange provides a date range picker using react-day-picker and Tailwind UI.
+ * @param {object} props - Component props.
+ * @param {string} [props.className] - Additional class names for the root div.
+ * @param {DateRange | undefined} props.value - The selected date range.
+ * @param {(value: DateRange | undefined) => void} props.onChange - Callback for date range change.
+ * @returns {JSX.Element} The date range picker component.
+ */
 export function DatePickerWithRange({
   className,
   value,
@@ -21,7 +30,7 @@ export function DatePickerWithRange({
 }: React.HTMLAttributes<HTMLDivElement> & {
   value: DateRange | undefined;
   onChange: (value: DateRange | undefined) => void;
-}) {
+}): JSX.Element {
   return (
     <div className={cn("grid gap-2", className)}>
       <Popover>

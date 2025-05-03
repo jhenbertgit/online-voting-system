@@ -5,13 +5,19 @@ import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { Badge } from "../ui/badge";
 import { Copy, LogOut } from "lucide-react";
 import React from "react";
+import type { JSX } from "react";
 
 function shortenAddress(address?: string) {
   if (!address) return "";
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
 }
 
-export function Account() {
+/**
+ * Account displays the current user's wallet, ENS info, and disconnect button.
+ * Uses wagmi for wallet/account management and ENS resolution.
+ * @returns {JSX.Element} The account card component.
+ */
+export function Account(): JSX.Element {
   const { address } = useAccount();
   const { disconnect } = useDisconnect();
   const { data: ensName } = useEnsName({ address });
