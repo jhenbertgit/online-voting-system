@@ -13,9 +13,18 @@ import { Candidate, Election, Position, Vote } from "database/src/client";
 /**
  * ElectionType extends Election with related data.
  */
-interface ElectionType extends Election {
+export interface ElectionType extends Election {
+  /**
+   * Array of positions.
+   */
   positions: Position[];
+  /**
+   * Array of candidates.
+   */
   candidates: Candidate[];
+  /**
+   * Array of votes.
+   */
   votes: Vote[];
 }
 
@@ -23,12 +32,27 @@ interface ElectionType extends Election {
  * ElectionsContextType defines the context shape for election data and actions.
  */
 interface ElectionsContextType {
+  /**
+   * Array of elections.
+   */
   elections: ElectionType[];
+  /**
+   * Loading state.
+   */
   loading: boolean;
+  /**
+   * Error message.
+   */
   error: string | null;
+  /**
+   * Refresh function.
+   */
   refresh: () => void;
 }
 
+/**
+ * ElectionsContext is the context for election data and actions.
+ */
 const ElectionsContext = createContext<ElectionsContextType | undefined>(
   undefined
 );
@@ -44,7 +68,11 @@ const ELECTIONS_CACHE_KEY = "elections:all";
  * @param props - Children React nodes.
  * @returns {JSX.Element}
  */
-function ElectionsProvider({ children }: { children: ReactNode }): JSX.Element {
+export function ElectionsProvider({
+  children,
+}: {
+  children: ReactNode;
+}): JSX.Element {
   const { getToken } = useAuth();
   const [elections, setElections] = useState<ElectionType[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -120,12 +148,10 @@ function ElectionsProvider({ children }: { children: ReactNode }): JSX.Element {
  * @returns {ElectionsContextType}
  * @throws Error if used outside ElectionsProvider.
  */
-function useElections(): ElectionsContextType {
+export function useElections(): ElectionsContextType {
   const context = useContext(ElectionsContext);
   if (!context) {
     throw new Error("useElections must be used within an ElectionsProvider");
   }
   return context;
 }
-
-export { ElectionsProvider, useElections };

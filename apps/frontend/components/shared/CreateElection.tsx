@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import type { JSX } from "react"; // Explicitly import JSX type
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,14 +11,6 @@ import { DatePickerWithRange } from "./DatePickerWithRange";
 import { ethers } from "ethers";
 import { useAuth } from "@clerk/nextjs";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { WalletConnectCard } from "./WalletConnectCard";
-import {
   Select,
   SelectContent,
   SelectGroup,
@@ -28,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useElections, useContract } from "@/context";
+import { useElections } from "@/contexts";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useForm, FormProvider, useWatch, Controller } from "react-hook-form";
 import { z } from "zod";
@@ -36,6 +27,10 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Spinner } from "@/components/ui/spinner";
 import { useEffect } from "react";
+import { useWriteContract, useTransaction } from "wagmi";
+import { VotingGuardianABI } from "@/abis";
+import { isAddress } from "ethers";
+import { config as wagmiConfig } from "@/lib/wagmi/config";
 
 // --- Zod Schemas ---
 const electionSchema = z.object({
@@ -73,16 +68,18 @@ const steps = [
   { label: "Candidates", icon: <UserPlus2Icon className="w-5 h-5" /> },
 ];
 
-export function CreateElection(): JSX.Element {
-  // Explicitly define return type
-  const { address } = useAccount();
+/**
+ * CreateElection renders the content for creating an election, intended to be used inside a Dialog.
+ * @returns {React.JSX.Element} The dialog content for election creation.
+ */
+export function CreateElection(): React.JSX.Element {
+  const { address, isConnected } = useAccount();
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<"election" | "position" | "candidate">(
     "election"
   );
   const { getToken } = useAuth();
   const { elections, loading: electionsLoading, refresh } = useElections();
-  const { contract, signer } = useContract();
   const queryClient = useQueryClient();
 
   // --- React Hook Form ---
@@ -128,28 +125,62 @@ export function CreateElection(): JSX.Element {
     },
   });
 
+  const contractAddress = process.env
+    .NEXT_PUBLIC_CONTRACT_ADDRESS as `0x${string}`;
+  if (!contractAddress || !isAddress(contractAddress)) {
+    throw new Error(
+      "Invalid or missing contract address in environment variables"
+    );
+  }
+
   // --- TanStack Query Mutations ---
+  const {
+    writeContract: writeCreateElection,
+    data: createElectionTx,
+    isPending: isCreateElectionPending,
+    isSuccess: isCreateElectionSuccess,
+    error: createElectionError,
+    reset: resetCreateElection,
+  } = useWriteContract();
+
+  const {
+    isLoading: isElectionTxConfirming,
+    isSuccess: isElectionTxConfirmed,
+  } = useTransaction({
+    hash: createElectionTx,
+  });
+
   const createElectionMutation = useMutation({
     mutationFn: async (data: ElectionFormType) => {
-      if (!signer || !contract)
-        throw new Error("No signer or contract available");
+      if (!isConnected) {
+        throw new Error(
+          "Please connect your wallet before creating an election."
+        );
+      }
       const token = await getToken();
       if (!data.dateRange.from || !data.dateRange.to) {
         throw new Error("Both start and end dates must be selected.");
       }
       const startTime = Math.floor(data.dateRange.from.getTime() / 1000);
       const endTime = Math.floor(data.dateRange.to.getTime() / 1000);
-
-      // Create election on blockchain
-      const tx = await contract.createElection(
-        ethers.id(data.name),
-        data.name,
-        startTime,
-        endTime,
-        ethers.ZeroHash // TODO: Add merkle root (voter IDs)
-      );
-      await tx.wait();
-
+      // Write to blockchain using wagmi hook
+      writeCreateElection({
+        abi: VotingGuardianABI,
+        address: contractAddress,
+        functionName: "createElection",
+        args: [
+          ethers.id(data.name),
+          data.name.toLowerCase(),
+          startTime,
+          endTime,
+          ethers.ZeroHash, // TODO: Add merkle root (voter IDs)
+        ],
+      });
+      // Wait for transaction confirmation
+      while (!isElectionTxConfirmed && !createElectionError) {
+        await new Promise((resolve) => setTimeout(resolve, 500));
+      }
+      if (createElectionError) throw createElectionError;
       // Create election to database
       const startDate =
         data.dateRange.from instanceof Date
@@ -162,7 +193,6 @@ export function CreateElection(): JSX.Element {
       if (!startDate || !endDate) {
         throw new Error("Invalid date range provided.");
       }
-
       const response = await fetch("/api/elections", {
         method: "POST",
         headers: {
@@ -170,12 +200,12 @@ export function CreateElection(): JSX.Element {
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          name: data.name,
+          name: data.name.toLowerCase(),
           description: data.description,
           startDate,
           endDate,
-          merkleRoot: ethers.ZeroHash,
-          contractAddress: process.env.NEXT_PUBLIC_CONTRACT_ADDRESS,
+          merkleRoot: ethers.ZeroHash, // TODO: Add merkle root (valid voter IDs)
+          contractAddress: contractAddress,
           adminAddress: address,
           onChainElectionId: ethers.id(data.name),
         }),
@@ -198,8 +228,11 @@ export function CreateElection(): JSX.Element {
 
   const createPositionMutation = useMutation({
     mutationFn: async (data: PositionFormType) => {
-      if (!signer || !contract)
-        throw new Error("No signer or contract available");
+      if (!isConnected) {
+        throw new Error(
+          "Please connect your wallet before creating a position."
+        );
+      }
       const token = await getToken();
       const onChainPositionId = ethers.id(data.name);
       //TODO: Add position to blockchain
@@ -233,26 +266,100 @@ export function CreateElection(): JSX.Element {
     },
   });
 
-  let toastId: string | number;
-  let tx: any;
-  const createCandidateMutation = useMutation({
-    mutationFn: async (data: CandidateFormType) => {
-      toastId = toast.loading("Registering candidate...");
+  const {
+    writeContract: writeAddCandidate,
+    data: addCandidateTx,
+    isPending: isAddCandidatePending,
+    isSuccess: isAddCandidateSuccess,
+    error: addCandidateError,
+    reset: resetAddCandidate,
+  } = useWriteContract();
 
-      if (!signer || !contract)
-        throw new Error("No signer or contract available");
+  const { isLoading: isTxConfirming, isSuccess: isTxConfirmed } =
+    useTransaction({
+      hash: addCandidateTx,
+    });
+
+  type CreateCandidateMutationReturn = {
+    payload: CandidateFormType & {
+      onChainCandidateId: string;
+    };
+    toastId: string | number;
+  };
+
+  const createCandidateMutation = useMutation<
+    CreateCandidateMutationReturn,
+    Error,
+    CandidateFormType
+  >({
+    mutationFn: async (
+      data: CandidateFormType
+    ): Promise<CreateCandidateMutationReturn> => {
+      let toastId: string | number = toast.loading("Registering candidate...");
+      if (!isConnected) {
+        toast.dismiss(toastId);
+        throw new Error(
+          "Please connect your wallet before registering a candidate."
+        );
+      }
       const token = await getToken();
       const idHash = ethers.id(data.name);
-      const positionId = ethers.id(data.positionId);
+      // Pre-check for existing candidate in the same election (by onChainCandidateId)
+      const election = elections.find((e) => e.id === data.electionId);
+      if (
+        election?.candidates.some(
+          (candidate) => candidate.onChainCandidateId === idHash
+        )
+      ) {
+        toast.dismiss(toastId);
+        throw new Error(
+          "A candidate with this name already exists in this election."
+        );
+      }
+      // Convert positionId to a number for contract call (uint256 expected)
+      const positionId = BigInt(ethers.id(data.positionId));
 
-      // Add candidate on blockchain
-      tx = await contract.addCandidate(idHash, positionId);
+      try {
+        const { simulateContract } = await import("@wagmi/core");
+        await simulateContract(wagmiConfig, {
+          abi: VotingGuardianABI,
+          address: contractAddress,
+          functionName: "addCandidate",
+          args: [idHash, positionId],
+          account: address as `0x${string}`,
+        });
+      } catch (simError) {
+        toast.dismiss(toastId);
+        throw new Error(`Simulation failed: ${(simError as Error).message}`);
+      }
 
-      toast.loading(`Transaction submitted: ${tx.hash.slice(0, 10)}...`, {
-        id: toastId,
+      // Write to blockchain using wagmi hook
+      writeAddCandidate({
+        abi: VotingGuardianABI,
+        address: contractAddress,
+        functionName: "addCandidate",
+        args: [idHash, positionId],
       });
-      await tx.wait();
-
+      // Wait for transaction confirmation with timeout
+      const maxWaitMs = 60000; // 60 seconds
+      const pollInterval = 500;
+      let waited = 0;
+      while (!isTxConfirmed && !addCandidateError && waited < maxWaitMs) {
+        await new Promise((resolve) => setTimeout(resolve, pollInterval));
+        waited += pollInterval;
+      }
+      if (!isTxConfirmed && !addCandidateError) {
+        toast.dismiss(toastId);
+        throw new Error(
+          "Transaction confirmation timed out. Please try again."
+        );
+      }
+      console.log("isTxConfirmed: ", isTxConfirmed);
+      console.log("addCandidateError: ", addCandidateError);
+      if (addCandidateError) {
+        toast.dismiss(toastId);
+        throw addCandidateError;
+      }
       // Add candidate to database
       const payload = {
         name: data.name,
@@ -263,372 +370,386 @@ export function CreateElection(): JSX.Element {
         positionId: data.positionId,
         electionId: data.electionId,
       };
-      const response = await fetch("/api/candidates", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(payload),
-      });
+      let response;
+      try {
+        response = await fetch("/api/candidates", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(payload),
+        });
+      } catch (apiError) {
+        toast.dismiss(toastId);
+        throw new Error("Failed to reach the server. Please try again later.");
+      }
       if (!response.ok) {
+        toast.dismiss(toastId);
         const errorData = await response.json();
         throw new Error(errorData.message || "Candidate registration failed");
       }
-      return payload;
+      return { payload, toastId };
     },
-    onSuccess: (payload) => {
+    onSuccess: (data) => {
+      const { toastId } = data || {};
       if (toastId) {
         toast.success("Candidate registered!", {
           id: toastId,
-          description: `Transaction: ${tx.hash.slice(0, 10)}...`,
-          action: {
-            label: "View",
-            onClick: () =>
-              window.open(
-                `${process.env.NEXT_PUBLIC_POLYGONSCAN_URL}/tx/${tx.hash}`,
-                "_blank"
-              ),
-          },
+          description: `Transaction: ${addCandidateTx?.slice(0, 6)}...${addCandidateTx?.slice(-4)}`,
+          action: addCandidateTx
+            ? {
+                label: "View",
+                onClick: () =>
+                  window.open(
+                    `${process.env.NEXT_PUBLIC_POLYGONSCAN_URL}/tx/${addCandidateTx}`,
+                    "_blank"
+                  ),
+              }
+            : undefined,
         });
       }
       candidateForm.reset();
+      resetAddCandidate();
     },
-    onError: (err: Error) => {
-      if (toastId) {
-        toast.error(err.message || "Failed to register candidate", {
-          id: toastId,
-        });
-      } else {
-        toast.error(err.message || "Failed to register candidate");
-      }
+    onError: (err, _variables, context) => {
+      // context is undefined by default unless set via mutation options; so fallback to showing generic error
+      toast.error(err.message || "Failed to register candidate");
+      resetAddCandidate();
     },
   });
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button onClick={() => setTab("election")}>Create Election</Button>
-      </DialogTrigger>
-      <DialogContent className="max-w-2xl w-full max-h-[80vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Create Election</DialogTitle>
-        </DialogHeader>
-        {/* Wallet details of Admin */}
-        <WalletConnectCard />
-        <Tabs
-          value={tab}
-          onValueChange={(value) => {
-            if (
-              value === "election" ||
-              value === "position" ||
-              value === "candidate"
-            ) {
-              setTab(value);
-            }
-          }}
-          className="w-full"
-        >
-          <TabsList className="mb-4 w-full">
-            <TabsTrigger value="election" className="flex-1">
-              Create Election
-            </TabsTrigger>
-            <TabsTrigger value="position" className="flex-1">
-              Create Position
-            </TabsTrigger>
-            <TabsTrigger value="candidate" className="flex-1">
-              Add Candidates
-            </TabsTrigger>
-          </TabsList>
-          {/* Election Tab */}
-          <TabsContent value="election">
-            <FormProvider {...electionForm}>
-              <form
-                onSubmit={electionForm.handleSubmit((data) =>
-                  createElectionMutation.mutate(data)
-                )}
-              >
-                <div className="space-y-6">
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="name" className="text-right">
-                      Name
-                    </Label>
-                    <Input
-                      id="name"
-                      {...electionForm.register("name")}
-                      className="col-span-3"
-                      placeholder="Election name"
-                    />
-                  </div>
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="description" className="text-right">
-                      Description
-                    </Label>
-                    <Input
-                      id="description"
-                      {...electionForm.register("description")}
-                      className="col-span-3"
-                      placeholder="Election description"
-                    />
-                  </div>
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label className="col-span-1">Election Period</Label>
-                    <div className="flex gap-4 col-span-3">
-                      <Controller
-                        control={electionForm.control}
-                        name="dateRange"
-                        render={({ field }) => (
-                          <DatePickerWithRange
-                            className="w-full"
-                            value={field.value}
-                            onChange={field.onChange}
-                          />
-                        )}
-                      />
-                    </div>
-                  </div>
-                  <div className="flex justify-end gap-2">
-                    <Button variant="secondary" onClick={() => setOpen(false)}>
-                      Cancel
-                    </Button>
-                    <Button
-                      variant="default"
-                      type="submit"
-                      disabled={createElectionMutation.isPending}
-                    >
-                      {createElectionMutation.isPending ? (
-                        <>
-                          <Spinner className="w-4 h-4 mr-2 text-white" />
-                          Creating...
-                        </>
-                      ) : (
-                        "Create Election"
+    <>
+      <Tabs
+        value={tab}
+        onValueChange={(value) => {
+          if (
+            value === "election" ||
+            value === "position" ||
+            value === "candidate"
+          ) {
+            setTab(value);
+          }
+        }}
+        className="w-full max-w-2xl mx-auto"
+      >
+        <TabsList className="mb-6 flex w-full justify-center gap-2 bg-muted rounded-lg p-1">
+          <TabsTrigger
+            value="election"
+            className="flex-1 px-4 py-2 data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg transition"
+          >
+            <span className="flex items-center gap-2">
+              <CheckCircle2Icon className="w-5 h-5" />
+              Election Details
+            </span>
+          </TabsTrigger>
+          <TabsTrigger
+            value="position"
+            className="flex-1 px-4 py-2 data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg transition"
+          >
+            <span className="flex items-center gap-2">
+              <UserPlus2Icon className="w-5 h-5" />
+              Positions
+            </span>
+          </TabsTrigger>
+          <TabsTrigger
+            value="candidate"
+            className="flex-1 px-4 py-2 data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg transition"
+          >
+            <span className="flex items-center gap-2">
+              <UserPlus2Icon className="w-5 h-5" />
+              Candidates
+            </span>
+          </TabsTrigger>
+        </TabsList>
+        {/* Election Tab */}
+        <TabsContent value="election">
+          <FormProvider {...electionForm}>
+            <form
+              onSubmit={electionForm.handleSubmit((data) =>
+                createElectionMutation.mutate(data)
+              )}
+            >
+              <div className="space-y-6">
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="name" className="text-right">
+                    Name
+                  </Label>
+                  <Input
+                    id="name"
+                    {...electionForm.register("name")}
+                    className="col-span-3"
+                    placeholder="Election name"
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="description" className="text-right">
+                    Description
+                  </Label>
+                  <Input
+                    id="description"
+                    {...electionForm.register("description")}
+                    className="col-span-3"
+                    placeholder="Election description"
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label className="col-span-1">Election Period</Label>
+                  <div className="flex gap-4 col-span-3">
+                    <Controller
+                      control={electionForm.control}
+                      name="dateRange"
+                      render={({ field }) => (
+                        <DatePickerWithRange
+                          className="w-full"
+                          value={field.value}
+                          onChange={field.onChange}
+                        />
                       )}
-                    </Button>
+                    />
                   </div>
                 </div>
-              </form>
-            </FormProvider>
-          </TabsContent>
-          {/* Position Tab */}
-          <TabsContent value="position">
-            <FormProvider {...positionForm}>
-              <form
-                onSubmit={positionForm.handleSubmit((data) =>
-                  createPositionMutation.mutate(data)
-                )}
-              >
-                <div className="space-y-6">
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="position-name" className="col-span-1">
-                      Position Name
-                    </Label>
-                    <Input
-                      id="position-name"
-                      {...positionForm.register("name")}
-                      className="col-span-3"
-                      placeholder="e.g. President"
-                    />
-                  </div>
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label
-                      htmlFor="position-description"
-                      className="col-span-1"
-                    >
-                      Description
-                    </Label>
-                    <Input
-                      id="position-description"
-                      {...positionForm.register("description")}
-                      className="col-span-3"
-                      placeholder="e.g. The highest office in the election."
-                    />
-                  </div>
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="position-election" className="col-span-1">
-                      Election
-                    </Label>
-                    <Select
-                      value={positionForm.watch("electionId")}
-                      onValueChange={(value: any) =>
-                        positionForm.setValue("electionId", value)
-                      }
-                      disabled={electionsLoading}
-                    >
-                      <SelectTrigger className="col-span-3">
-                        <SelectValue placeholder="Select election" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectGroup>
-                          <SelectLabel>Election</SelectLabel>
-                          {elections.map((e: any) => (
-                            <SelectItem key={e.id} value={e.id}>
-                              {e.name}
+                <div className="flex justify-end gap-2">
+                  <Button variant="secondary" onClick={() => setOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button
+                    variant="default"
+                    type="submit"
+                    disabled={createElectionMutation.isPending}
+                  >
+                    {createElectionMutation.isPending ? (
+                      <>
+                        <Spinner className="w-4 h-4 mr-2 text-white" />
+                        Creating...
+                      </>
+                    ) : (
+                      "Create Election"
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </form>
+          </FormProvider>
+        </TabsContent>
+        {/* Position Tab */}
+        <TabsContent value="position">
+          <FormProvider {...positionForm}>
+            <form
+              onSubmit={positionForm.handleSubmit((data) =>
+                createPositionMutation.mutate({
+                  ...data,
+                  name: data.name.toLowerCase(),
+                })
+              )}
+            >
+              <div className="space-y-6">
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="position-name" className="col-span-1">
+                    Position Name
+                  </Label>
+                  <Input
+                    id="position-name"
+                    {...positionForm.register("name")}
+                    className="col-span-3"
+                    placeholder="e.g. President"
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="position-description" className="col-span-1">
+                    Description
+                  </Label>
+                  <Input
+                    id="position-description"
+                    {...positionForm.register("description")}
+                    className="col-span-3"
+                    placeholder="e.g. The highest office in the election."
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="position-election" className="col-span-1">
+                    Election
+                  </Label>
+                  <Select
+                    value={positionForm.watch("electionId")}
+                    onValueChange={(value: any) =>
+                      positionForm.setValue("electionId", value)
+                    }
+                    disabled={electionsLoading}
+                  >
+                    <SelectTrigger className="col-span-3">
+                      <SelectValue placeholder="Select election" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectGroup>
+                        <SelectLabel>Election</SelectLabel>
+                        {elections.map((e: any) => (
+                          <SelectItem key={e.id} value={e.id}>
+                            {e.name}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex justify-between gap-2">
+                  <Button
+                    variant="secondary"
+                    onClick={() => setTab("election")}
+                  >
+                    Back
+                  </Button>
+                  <Button
+                    variant="default"
+                    type="submit"
+                    disabled={createPositionMutation.isPending}
+                  >
+                    {createPositionMutation.isPending ? (
+                      <>
+                        <Spinner className="w-4 h-4 mr-2 text-white" />
+                        Adding...
+                      </>
+                    ) : (
+                      "Add Position"
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </form>
+          </FormProvider>
+        </TabsContent>
+        {/* Candidate Tab */}
+        <TabsContent value="candidate">
+          <FormProvider {...candidateForm}>
+            <form
+              onSubmit={candidateForm.handleSubmit((data) =>
+                createCandidateMutation.mutate(data)
+              )}
+            >
+              <div className="space-y-6">
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="candidate-name" className="col-span-1">
+                    Name
+                  </Label>
+                  <Input
+                    id="candidate-name"
+                    {...candidateForm.register("name")}
+                    className="col-span-3"
+                    placeholder="e.g. Jane Doe"
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="candidate-bio" className="col-span-1">
+                    Bio
+                  </Label>
+                  <Input
+                    id="candidate-bio"
+                    {...candidateForm.register("bio")}
+                    className="col-span-3"
+                    placeholder="Short bio"
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="candidate-party" className="col-span-1">
+                    Party
+                  </Label>
+                  <Input
+                    id="candidate-party"
+                    {...candidateForm.register("party")}
+                    className="col-span-3"
+                    placeholder="e.g. Independent"
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="candidate-image" className="col-span-1">
+                    Avatar URL
+                  </Label>
+                  <Input
+                    id="candidate-image"
+                    {...candidateForm.register("image")}
+                    className="col-span-3"
+                    placeholder="Avatar URL"
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label className="col-span-1">Election</Label>
+                  <Select
+                    value={candidateForm.watch("electionId")}
+                    onValueChange={(value: any) =>
+                      candidateForm.setValue("electionId", value)
+                    }
+                  >
+                    <SelectTrigger className="col-span-3">
+                      <SelectValue placeholder="Select Election" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectGroup>
+                        <SelectLabel>Election</SelectLabel>
+                        {elections.map((el) => (
+                          <SelectItem key={el.id} value={el.id}>
+                            {el.name}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label className="col-span-1">Position</Label>
+                  <Select
+                    value={candidateForm.watch("positionId")}
+                    onValueChange={(value: any) =>
+                      candidateForm.setValue("positionId", value)
+                    }
+                    disabled={!candidateForm.watch("electionId")}
+                  >
+                    <SelectTrigger className="col-span-3">
+                      <SelectValue placeholder="Select Position" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectGroup>
+                        <SelectLabel>Position</SelectLabel>
+                        {elections
+                          .find(
+                            (el) => el.id === candidateForm.watch("electionId")
+                          )
+                          ?.positions.map((pos) => (
+                            <SelectItem key={pos.id} value={pos.id}>
+                              {pos.name}
                             </SelectItem>
                           ))}
-                        </SelectGroup>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="flex justify-between gap-2">
-                    <Button
-                      variant="secondary"
-                      onClick={() => setTab("election")}
-                    >
-                      Back
-                    </Button>
-                    <Button
-                      variant="default"
-                      type="submit"
-                      disabled={createPositionMutation.isPending}
-                    >
-                      {createPositionMutation.isPending ? (
-                        <>
-                          <Spinner className="w-4 h-4 mr-2 text-white" />
-                          Adding...
-                        </>
-                      ) : (
-                        "Add Position"
-                      )}
-                    </Button>
-                  </div>
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
                 </div>
-              </form>
-            </FormProvider>
-          </TabsContent>
-          {/* Candidate Tab */}
-          <TabsContent value="candidate">
-            <FormProvider {...candidateForm}>
-              <form
-                onSubmit={candidateForm.handleSubmit((data) =>
-                  createCandidateMutation.mutate(data)
-                )}
-              >
-                <div className="space-y-6">
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="candidate-name" className="col-span-1">
-                      Name
-                    </Label>
-                    <Input
-                      id="candidate-name"
-                      {...candidateForm.register("name")}
-                      className="col-span-3"
-                      placeholder="e.g. Jane Doe"
-                    />
-                  </div>
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="candidate-bio" className="col-span-1">
-                      Bio
-                    </Label>
-                    <Input
-                      id="candidate-bio"
-                      {...candidateForm.register("bio")}
-                      className="col-span-3"
-                      placeholder="Short bio"
-                    />
-                  </div>
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="candidate-party" className="col-span-1">
-                      Party
-                    </Label>
-                    <Input
-                      id="candidate-party"
-                      {...candidateForm.register("party")}
-                      className="col-span-3"
-                      placeholder="e.g. Independent"
-                    />
-                  </div>
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="candidate-image" className="col-span-1">
-                      Avatar URL
-                    </Label>
-                    <Input
-                      id="candidate-image"
-                      {...candidateForm.register("image")}
-                      className="col-span-3"
-                      placeholder="Avatar URL"
-                    />
-                  </div>
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label className="col-span-1">Election</Label>
-                    <Select
-                      value={candidateForm.watch("electionId")}
-                      onValueChange={(value: any) =>
-                        candidateForm.setValue("electionId", value)
-                      }
-                    >
-                      <SelectTrigger className="col-span-3">
-                        <SelectValue placeholder="Select Election" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectGroup>
-                          <SelectLabel>Election</SelectLabel>
-                          {elections.map((el) => (
-                            <SelectItem key={el.id} value={el.id}>
-                              {el.name}
-                            </SelectItem>
-                          ))}
-                        </SelectGroup>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label className="col-span-1">Position</Label>
-                    <Select
-                      value={candidateForm.watch("positionId")}
-                      onValueChange={(value: any) =>
-                        candidateForm.setValue("positionId", value)
-                      }
-                      disabled={!candidateForm.watch("electionId")}
-                    >
-                      <SelectTrigger className="col-span-3">
-                        <SelectValue placeholder="Select Position" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectGroup>
-                          <SelectLabel>Position</SelectLabel>
-                          {elections
-                            .find(
-                              (el) =>
-                                el.id === candidateForm.watch("electionId")
-                            )
-                            ?.positions.map((pos) => (
-                              <SelectItem key={pos.id} value={pos.id}>
-                                {pos.name}
-                              </SelectItem>
-                            ))}
-                        </SelectGroup>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="flex justify-between gap-2">
-                    <Button
-                      variant="secondary"
-                      onClick={() => setTab("position")}
-                    >
-                      Back
-                    </Button>
-                    <Button
-                      variant="default"
-                      type="submit"
-                      disabled={createCandidateMutation.isPending}
-                    >
-                      {createCandidateMutation.isPending ? (
-                        <>
-                          <Spinner className="w-4 h-4 mr-2 text-white" />
-                          Adding...
-                        </>
-                      ) : (
-                        "Add Candidate"
-                      )}
-                    </Button>
-                  </div>
+                <div className="flex justify-between gap-2">
+                  <Button
+                    variant="secondary"
+                    onClick={() => setTab("position")}
+                  >
+                    Back
+                  </Button>
+                  <Button
+                    variant="default"
+                    type="submit"
+                    disabled={createCandidateMutation.isPending}
+                  >
+                    {createCandidateMutation.isPending ? (
+                      <>
+                        <Spinner className="w-4 h-4 mr-2 text-white" />
+                        Adding...
+                      </>
+                    ) : (
+                      "Add Candidate"
+                    )}
+                  </Button>
                 </div>
-              </form>
-            </FormProvider>
-          </TabsContent>
-        </Tabs>
-      </DialogContent>
-    </Dialog>
+              </div>
+            </form>
+          </FormProvider>
+        </TabsContent>
+      </Tabs>
+    </>
   );
 }

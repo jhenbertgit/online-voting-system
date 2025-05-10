@@ -1,5 +1,5 @@
 "use client";
-import { type JSX, useEffect } from "react";
+import React, { useEffect } from "react";
 import { useUser } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 
@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
  * RedirectPage checks the user's role and redirects accordingly.
  * Admins go to /admin, all others go to /ballot.
  */
-export default function RedirectPage(): JSX.Element {
+export default function RedirectPage(): React.JSX.Element {
   const { user, isLoaded } = useUser();
   const router = useRouter();
 

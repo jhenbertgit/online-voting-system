@@ -1,10 +1,9 @@
 "use client";
 import React from "react";
-import type { FC, JSX } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { SignedIn, UserButton } from "@clerk/nextjs";
-import { Home, BarChart2, Settings } from "lucide-react";
+import { Home, BarChart2 } from "lucide-react";
 
 // You can move this to a constants file if you want to reuse it elsewhere
 const navLinks = [
@@ -13,27 +12,18 @@ const navLinks = [
     route: "/admin",
     icon: <Home className="w-5 h-5" />,
   },
-  {
-    label: "Reports",
-    route: "/admin/reports",
-    icon: <BarChart2 className="w-5 h-5" />,
-  },
-  {
-    label: "Settings",
-    route: "/admin/settings",
-    icon: <Settings className="w-5 h-5" />,
-  },
+  // Add other links in the future
 ];
 
 /**
  * DashboardSidebar displays the admin sidebar with navigation links and user profile.
  * Highlights the active route and docks the user button at the bottom.
- * @returns {JSX.Element} The sidebar component.
+ * @returns {React.JSX.Element} The sidebar component.
  */
-export const DashboardSidebar: FC = (): JSX.Element => {
+export const DashboardSidebar: React.FC = (): React.JSX.Element => {
   const pathname = usePathname();
   return (
-    <aside className="h-screen w-64 bg-white border-r flex flex-col shadow-sm">
+    <aside className="h-screen w-64 bg-white border-r flex flex-col shadow-sm sticky top-0 left-0 z-30">
       <div className="flex items-center gap-2 px-6 py-5 border-b">
         <div className="bg-primary text-white rounded-full w-8 h-8 flex items-center justify-center">
           <BarChart2 className="w-5 h-5" />

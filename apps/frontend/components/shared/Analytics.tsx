@@ -2,7 +2,7 @@
 
 import React from "react";
 import type { JSX } from "react";
-import { useElections } from "@/context/ElectionsContext";
+import { useElections } from "@/contexts/electionsContext";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import {
   BarChart,

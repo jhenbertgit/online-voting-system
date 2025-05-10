@@ -1,10 +1,9 @@
 "use client";
 import React from "react";
-import type { FC, JSX } from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import {
-  LineChart,
-  Line,
+  BarChart,
+  Bar,
   XAxis,
   YAxis,
   Tooltip,
@@ -13,42 +12,42 @@ import {
 } from "recharts";
 
 /**
- * DashboardAnalyticsChart displays a line chart for analytics.
- * @returns {JSX.Element} The analytics chart card.
+ * DashboardAnalyticsChart displays a bar chart for voter turnout by election.
+ * @returns {React.JSX.Element} The analytics chart card.
  */
-export const DashboardAnalyticsChart: FC = (): JSX.Element => {
-  // Mock data
-  const data = [
-    { name: "Jan", value: 4000 },
-    { name: "Feb", value: 3000 },
-    { name: "Mar", value: 2000 },
-    { name: "Apr", value: 2780 },
-    { name: "May", value: 1890 },
-    { name: "Jun", value: 2390 },
-    { name: "Jul", value: 3490 },
+export const DashboardAnalyticsChart: React.FC = (): React.JSX.Element => {
+  // Example/mock data for voter turnout by election
+  const turnoutData = [
+    { electionName: "2024 Board", turnoutPercent: 82 },
+    { electionName: "2025 Student Gov", turnoutPercent: 67 },
+    { electionName: "2025 HOA", turnoutPercent: 74 },
+    { electionName: "2025 PTA", turnoutPercent: 59 },
   ];
+
   return (
-    <Card>
-      <CardHeader>
-        <div className="text-sm font-medium text-muted-foreground">
-          Revenue Analytics
+    <Card className="w-full bg-white border shadow-sm rounded-xl">
+      <CardHeader className="pb-2">
+        <div className="text-lg font-semibold text-gray-800">
+          Voter Turnout by Election
+        </div>
+        <div className="text-xs text-muted-foreground">
+          Percentage of eligible voters who participated in each election
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="pt-0">
         <div className="h-64">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={data}>
+            <BarChart data={turnoutData} barCategoryGap={24}>
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="name" />
-              <YAxis />
-              <Tooltip />
-              <Line
-                type="monotone"
-                dataKey="value"
-                stroke="#6366f1"
-                strokeWidth={2}
+              <XAxis dataKey="electionName" tick={{ fontSize: 12 }} />
+              <YAxis domain={[0, 100]} tickFormatter={(v) => `${v}%`} />
+              <Tooltip formatter={(value: number) => `${value}%`} />
+              <Bar
+                dataKey="turnoutPercent"
+                fill="#6366f1"
+                radius={[6, 6, 0, 0]}
               />
-            </LineChart>
+            </BarChart>
           </ResponsiveContainer>
         </div>
       </CardContent>

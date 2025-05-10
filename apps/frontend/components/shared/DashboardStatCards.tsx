@@ -1,15 +1,14 @@
 "use client";
 import React, { useEffect, useState } from "react";
-import type { FC, JSX } from "react";
 import { DashboardWidget, DashboardWidgetProps } from "./DashboardWidget";
 import { Users, UserCheck, Landmark, Building2 } from "lucide-react";
-import { useElections } from "@/context";
+import { useElections } from "@/contexts";
 
 /**
  * DashboardStatCards displays four key statistics as widgets.
  * @returns {JSX.Element} The stat cards row.
  */
-export const DashboardStatCards: FC = (): JSX.Element => {
+export const DashboardStatCards: React.FC = (): React.JSX.Element => {
   const { elections, loading } = useElections();
   const [voterCount, setVoterCount] = useState<number | null>(null);
   const [voterLoading, setVoterLoading] = useState<boolean>(true);

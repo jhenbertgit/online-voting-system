@@ -17,12 +17,24 @@ import { ethers } from "ethers";
 /**
  * ContractContextType defines the context shape for Ethereum contract access.
  */
-export interface ContractContextType {
+interface ContractContextType {
+  /**
+   * The Ethereum contract instance.
+   */
   contract: ethers.Contract | null;
+  /**
+   * The Ethereum signer instance.
+   */
   signer: ethers.Signer | null;
+  /**
+   * Whether the contract and signer are ready for use.
+   */
   isReady: boolean;
 }
 
+/**
+ * ContractContext is the context for Ethereum contract access.
+ */
 const ContractContext = createContext<ContractContextType | undefined>(
   undefined
 );
@@ -32,7 +44,11 @@ const ContractContext = createContext<ContractContextType | undefined>(
  * @param props - Children React nodes.
  * @returns {JSX.Element}
  */
-function ContractProvider({ children }: { children: ReactNode }): JSX.Element {
+export function ContractProvider({
+  children,
+}: {
+  children: ReactNode;
+}): JSX.Element {
   const config = useConfig();
   const { address, isConnected } = useAccount();
   const [signer, setSigner] = useState<ethers.Signer | null>(null);
@@ -47,9 +63,10 @@ function ContractProvider({ children }: { children: ReactNode }): JSX.Element {
       setContract(null);
       return;
     }
-    const _signer = await getEthersSigner(config);
-    setSigner(_signer);
-    if (_signer) {
+    try {
+      // Use latest wagmi v2 best practice for getting ethers signer
+      const _signer = await getEthersSigner(config);
+      setSigner(_signer);
       const contractAddress = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS;
       if (!contractAddress) {
         setContract(null);
@@ -61,8 +78,10 @@ function ContractProvider({ children }: { children: ReactNode }): JSX.Element {
         _signer
       );
       setContract(_contract);
-    } else {
+    } catch (err) {
+      setSigner(null);
       setContract(null);
+      // Optionally log or handle error
     }
   }, [config, isConnected]);
 
@@ -101,11 +120,9 @@ function ContractProvider({ children }: { children: ReactNode }): JSX.Element {
  * @returns {ContractContextType}
  * @throws Error if used outside ContractProvider.
  */
-function useContract(): ContractContextType {
+export function useContract(): ContractContextType {
   const ctx = useContext(ContractContext);
   if (!ctx)
     throw new Error("useContract must be used within a ContractProvider");
   return ctx;
 }
-
-export { ContractProvider, useContract };

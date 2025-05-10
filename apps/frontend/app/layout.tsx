@@ -4,9 +4,9 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
 import { Toaster } from "@/components/ui/sonner";
 import { WagmiProvider } from "@/components/shared/WagmiProvider";
-import { ElectionsProvider } from "@/context/ElectionsContext";
-import { ContractProvider } from "@/context/ContractContext";
-import LayoutWithConditionalNavbar from "@/components/shared/LayoutWithConditionalNavbar";
+import { ElectionsProvider } from "@/contexts/electionsContext";
+import { ContractProvider } from "@/contexts/contractContext";
+import LayoutWithConditionalSiteChrome from "@/components/shared/LayoutWithConditionalSiteChrome";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -48,9 +48,9 @@ export default function RootLayout({
               <body
                 className={`${geistSans.variable} ${geistMono.variable} antialiased`}
               >
-                <LayoutWithConditionalNavbar>
+                <LayoutWithConditionalSiteChrome>
                   {children}
-                </LayoutWithConditionalNavbar>
+                </LayoutWithConditionalSiteChrome>
                 <Toaster richColors position="top-right" />
               </body>
             </html>

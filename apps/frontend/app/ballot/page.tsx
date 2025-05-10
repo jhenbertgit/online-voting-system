@@ -1,13 +1,10 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { useElections } from "@/context";
+import { useElections, type ElectionType } from "@/contexts";
 import { useAuth } from "@clerk/nextjs";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Election } from "database/src/client/client";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -23,7 +20,9 @@ import {
 import { useForm, Controller } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { Position } from "database/src/client";
+import { User } from "lucide-react";
 
 // Step order (can be changed, but keeps the sequence)
 const VOTE_SEQUENCE = [
@@ -34,29 +33,13 @@ const VOTE_SEQUENCE = [
   "district representative",
 ];
 
-function getOrderedPositions(positions: any[]) {
+function getOrderedPositions(positions: Position[]) {
   // Returns positions sorted by VOTE_SEQUENCE order
   const order = (name: string) => {
     const idx = VOTE_SEQUENCE.findIndex((v) => name.toLowerCase().includes(v));
     return idx === -1 ? 999 : idx;
   };
   return [...positions].sort((a, b) => order(a.name) - order(b.name));
-}
-
-// Type definitions
-interface Candidate {
-  id: string;
-  name: string;
-  party?: string;
-  bio?: string;
-  avatar?: string;
-  avatarUrl?: string;
-  positionId: string;
-}
-
-interface Position {
-  id: string;
-  name: string;
 }
 
 interface BallotFormValues {
@@ -80,7 +63,7 @@ export default function BallotPage() {
   const [open, setOpen] = useState(false);
 
   const currentElection =
-    elections.find((el: any) => el.id === activeElectionId) || elections[0];
+    elections.find((el) => el.id === activeElectionId) || elections[0];
 
   useEffect(() => {
     if (!elections?.length) return;
@@ -144,6 +127,8 @@ export default function BallotPage() {
   }, [getValues, userId, getToken]);
 
   // Submit ballot mutation
+  let toastId: string | number;
+  let txHash: string | undefined;
   const submitBallot = useMutation({
     mutationFn: async (ballot: BallotFormValues) => {
       const token = await getToken();
@@ -163,10 +148,27 @@ export default function BallotPage() {
       console.log("Submitted ballot:", ballot);
     },
     onSuccess: () => {
-      toast.success("Vote submitted successfully");
+      toast.success("Vote submitted successfully", {
+        id: toastId,
+        description: `Transaction: ${txHash?.slice(0, 6)}...${txHash?.slice(-4)}`,
+        action: {
+          label: "View",
+          onClick: () =>
+            window.open(
+              `${process.env.NEXT_PUBLIC_POLYGONSCAN_URL}/${txHash}`,
+              "_blank"
+            ),
+        },
+      });
     },
     onError: () => {
-      toast.error("Failed to submit vote");
+      toast.error("Failed to submit vote", { id: toastId });
+    },
+    onMutate: () => {
+      toastId = toast.loading("Submitting vote...");
+    },
+    onSettled: () => {
+      toast.dismiss(toastId);
     },
   });
 
@@ -187,7 +189,7 @@ export default function BallotPage() {
           className="mb-6"
         >
           <TabsList>
-            {elections.map((election: Election) => (
+            {elections.map((election: ElectionType) => (
               <TabsTrigger key={election.id} value={election.id}>
                 {election.name.toUpperCase()}
               </TabsTrigger>
@@ -210,7 +212,7 @@ export default function BallotPage() {
           className="mb-6"
         >
           <TabsList>
-            {elections.map((election: Election) => (
+            {elections.map((election: ElectionType) => (
               <TabsTrigger key={election.id} value={election.id}>
                 {election.name.toUpperCase()}
               </TabsTrigger>
@@ -330,7 +332,7 @@ export default function BallotPage() {
         className="mb-6"
       >
         <TabsList>
-          {elections.map((election: Election) => (
+          {elections.map((election: ElectionType) => (
             <TabsTrigger key={election.id} value={election.id}>
               {election.name.toUpperCase()}
             </TabsTrigger>
@@ -348,157 +350,141 @@ export default function BallotPage() {
             name={position.id}
             render={({ field }) =>
               isSenatorPosition ? (
-                <div className="flex flex-col gap-4">
-                  {candidates.map((candidate: Candidate) => {
+                <div
+                  className={
+                    candidates.length === 2
+                      ? "grid grid-cols-1 sm:grid-cols-2 gap-6"
+                      : candidates.length > 2
+                        ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6"
+                        : "flex flex-col gap-6"
+                  }
+                >
+                  {candidates.map((candidate) => {
                     const isSelected =
                       Array.isArray(field.value) &&
                       field.value.includes(candidate.id);
                     return (
                       <div
                         key={candidate.id}
-                        className={`border rounded-xl p-4 flex items-center gap-4 transition-shadow duration-150 ${
+                        tabIndex={0}
+                        role="button"
+                        aria-pressed={isSelected}
+                        onClick={() => {
+                          let newValue = Array.isArray(field.value)
+                            ? [...field.value]
+                            : [];
+                          if (isSelected) {
+                            newValue = newValue.filter(
+                              (id) => id !== candidate.id
+                            );
+                          } else {
+                            if (newValue.length < SENATOR_MAX_SELECTION) {
+                              newValue.push(candidate.id);
+                            }
+                          }
+                          field.onChange(newValue);
+                        }}
+                        className={`border-2 rounded-2xl p-6 flex flex-col items-center transition-shadow duration-150 bg-white shadow-sm relative cursor-pointer outline-none focus:ring-2 focus:ring-primary select-none ${
                           isSelected
-                            ? "border-primary bg-primary/10 shadow-lg"
-                            : "hover:border-primary/50 hover:shadow"
+                            ? "border-4 border-primary bg-primary/10 shadow-lg"
+                            : "border-muted hover:border-primary/50 hover:shadow"
                         }`}
                       >
-                        <label
-                          htmlFor={`senator-checkbox-${candidate.id}`}
-                          className="flex items-center gap-4 w-full cursor-pointer"
-                        >
-                          <input
-                            type="checkbox"
-                            id={`senator-checkbox-${candidate.id}`}
-                            checked={isSelected}
-                            disabled={
-                              !isSelected &&
-                              Array.isArray(field.value) &&
-                              field.value.length >= SENATOR_MAX_SELECTION
-                            }
-                            onChange={(e) => {
-                              let newValue = Array.isArray(field.value)
-                                ? [...field.value]
-                                : [];
-                              if (e.target.checked) {
-                                if (newValue.length < SENATOR_MAX_SELECTION) {
-                                  newValue.push(candidate.id);
-                                }
-                              } else {
-                                newValue = newValue.filter(
-                                  (id) => id !== candidate.id
-                                );
-                              }
-                              field.onChange(newValue);
-                            }}
-                            className="mr-4 size-5 accent-primary"
-                          />
-                          <Avatar className="size-12">
-                            {candidate.avatar || candidate.avatarUrl ? (
-                              <AvatarImage
-                                src={candidate.avatar || candidate.avatarUrl}
-                                alt={candidate.name}
-                              />
-                            ) : (
-                              <AvatarFallback>
-                                {candidate.name
-                                  .split(" ")
-                                  .map((n: string) => n[0])
-                                  .join("")}
-                              </AvatarFallback>
-                            )}
-                          </Avatar>
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                              <span className="font-semibold text-lg">
-                                {candidate.name}
-                              </span>
-                              {candidate.party && (
-                                <span className="ml-2 px-2 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-medium tracking-wide border border-primary/20">
-                                  {candidate.party}
-                                </span>
-                              )}
+                        <div className="w-full flex flex-col items-center">
+                          {candidate.avatar ? (
+                            <img
+                              src={candidate.avatar}
+                              alt={candidate.name}
+                              className="w-24 h-24 mb-4 object-cover rounded-xl bg-muted border"
+                            />
+                          ) : (
+                            <div className="w-24 h-24 mb-4 flex items-center justify-center rounded-xl bg-muted border">
+                              <User className="w-12 h-12 text-muted-foreground" />
                             </div>
-                            <div className="text-muted-foreground text-sm">
-                              {candidate.bio || ""}
-                            </div>
-                          </div>
-                        </label>
+                          )}
+                          <span className="font-semibold text-xl text-center mb-2">
+                            {candidate.name}
+                          </span>
+                          {candidate.party && (
+                            <span className="px-3 py-1 rounded-full bg-primary/10 text-primary text-sm font-medium tracking-wide border border-primary/20 mb-2">
+                              {candidate.party}
+                            </span>
+                          )}
+                          {candidate.bio && (
+                            <span className="text-muted-foreground text-sm text-center">
+                              {candidate.bio}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     );
                   })}
                   {errors[position.id] && (
-                    <div className="text-red-500 text-sm mt-1">
+                    <div className="text-red-500 text-sm mt-1 col-span-full">
                       {errors[position.id]?.message?.toString()}
                     </div>
                   )}
                 </div>
               ) : (
-                <RadioGroup
-                  value={
-                    typeof field.value === "string"
-                      ? field.value
-                      : Array.isArray(field.value)
-                        ? (field.value[0] ?? "")
-                        : ""
+                <div
+                  className={
+                    candidates.length === 2
+                      ? "grid grid-cols-1 sm:grid-cols-2 gap-6"
+                      : candidates.length > 2
+                        ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6"
+                        : "flex flex-col gap-6"
                   }
-                  onValueChange={field.onChange}
-                  className="flex flex-col gap-4"
                 >
-                  {candidates.map((candidate: Candidate) => (
-                    <div
-                      key={candidate.id}
-                      className={`border rounded-xl p-4 flex items-center gap-4 transition-shadow duration-150 ${
-                        field.value === candidate.id
-                          ? "border-primary bg-primary/10 shadow-lg"
-                          : "hover:border-primary/50 hover:shadow"
-                      }`}
-                    >
-                      <RadioGroupItem
-                        value={candidate.id}
-                        id={candidate.id}
-                        className="mr-4"
-                      />
-                      <Avatar className="size-12">
-                        {candidate.avatar || candidate.avatarUrl ? (
-                          <AvatarImage
-                            src={candidate.avatar || candidate.avatarUrl}
-                            alt={candidate.name}
-                          />
-                        ) : (
-                          <AvatarFallback>
-                            {candidate.name
-                              .split(" ")
-                              .map((n: string) => n[0])
-                              .join("")}
-                          </AvatarFallback>
-                        )}
-                      </Avatar>
-                      <label
-                        htmlFor={candidate.id}
-                        className="cursor-pointer flex-1"
+                  {candidates.map((candidate) => {
+                    const isSelected = field.value === candidate.id;
+                    return (
+                      <div
+                        key={candidate.id}
+                        tabIndex={0}
+                        role="button"
+                        aria-pressed={isSelected}
+                        onClick={() => field.onChange(candidate.id)}
+                        className={`border-2 rounded-2xl p-6 flex flex-col items-center transition-shadow duration-150 bg-white shadow-sm relative cursor-pointer outline-none focus:ring-2 focus:ring-primary select-none ${
+                          isSelected
+                            ? "border-4 border-primary bg-primary/10 shadow-lg"
+                            : "border-muted hover:border-primary/50 hover:shadow"
+                        }`}
                       >
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="font-semibold text-lg">
+                        <div className="w-full flex flex-col items-center">
+                          {candidate.avatar ? (
+                            <img
+                              src={candidate.avatar}
+                              alt={candidate.name}
+                              className="w-24 h-24 mb-4 object-cover rounded-xl bg-muted border"
+                            />
+                          ) : (
+                            <div className="w-24 h-24 mb-4 flex items-center justify-center rounded-xl bg-muted border">
+                              <User className="w-12 h-12 text-muted-foreground" />
+                            </div>
+                          )}
+                          <span className="font-semibold text-xl text-center mb-2">
                             {candidate.name}
                           </span>
                           {candidate.party && (
-                            <span className="ml-2 px-2 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-medium tracking-wide border border-primary/20">
+                            <span className="px-3 py-1 rounded-full bg-primary/10 text-primary text-sm font-medium tracking-wide border border-primary/20 mb-2">
                               {candidate.party}
                             </span>
                           )}
+                          {candidate.bio && (
+                            <span className="text-muted-foreground text-sm text-center">
+                              {candidate.bio}
+                            </span>
+                          )}
                         </div>
-                        <div className="text-muted-foreground text-sm">
-                          {candidate.bio || ""}
-                        </div>
-                      </label>
-                    </div>
-                  ))}
+                      </div>
+                    );
+                  })}
                   {errors[position.id] && (
-                    <div className="text-red-500 text-sm mt-1">
+                    <div className="text-red-500 text-sm mt-1 col-span-full">
                       {errors[position.id]?.message?.toString()}
                     </div>
                   )}
-                </RadioGroup>
+                </div>
               )
             }
           />
