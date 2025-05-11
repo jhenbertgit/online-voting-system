@@ -31,11 +31,6 @@ async function bootstrap() {
     },
   );
 
-  app.enableCors({
-    origin: true, // or true for all origins, or an array of allowed origins
-    credentials: true, // if you use cookies/auth
-  });
-
   app.setGlobalPrefix('api/v1');
 
   // Enable global validation
