@@ -1,15 +1,26 @@
 "use client";
 
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { useAccount } from "wagmi";
 import { UserPlus2Icon, CheckCircle2Icon } from "lucide-react";
 import { DatePickerWithRange } from "./DatePickerWithRange";
 import { ethers } from "ethers";
 import { useAuth } from "@clerk/nextjs";
+import { useElections } from "@/contexts";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useWriteContract, useTransaction } from "wagmi";
+import { VotingGuardianABI } from "@/abis";
+import { isAddress } from "ethers";
+import { config as wagmiConfig } from "@/lib/wagmi/config";
+import { useForm, FormProvider, useWatch, Controller } from "react-hook-form";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Spinner } from "@/components/ui/spinner";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
   SelectContent,
@@ -19,18 +30,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useElections } from "@/contexts";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useForm, FormProvider, useWatch, Controller } from "react-hook-form";
-import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Spinner } from "@/components/ui/spinner";
-import { useEffect } from "react";
-import { useWriteContract, useTransaction } from "wagmi";
-import { VotingGuardianABI } from "@/abis";
-import { isAddress } from "ethers";
-import { config as wagmiConfig } from "@/lib/wagmi/config";
 
 // --- Zod Schemas ---
 const electionSchema = z.object({

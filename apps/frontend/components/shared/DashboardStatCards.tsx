@@ -45,9 +45,16 @@ export const DashboardStatCards: React.FC = (): React.JSX.Element => {
   const totalPartyLists: number = elections.reduce(
     (sum, election) =>
       sum +
-      election.positions.filter(
-        (pos) => pos.name.toLowerCase() === "party list"
-      ).length,
+      election.positions
+        .filter((pos) => pos.name.toLowerCase() === "party list")
+        .reduce(
+          (posSum, pos) =>
+            posSum +
+            election.candidates.filter(
+              (candidate) => candidate.positionId === pos.id
+            ).length,
+          0
+        ),
     0
   );
 

@@ -1,14 +1,11 @@
-import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { NextResponse } from "next/server";
+import { withAuth } from "@/lib/auth-middleware";
+import { getApiUrl } from "@/lib/api";
 
-export async function POST(req: NextRequest) {
+export const POST = withAuth(async (req, { token }) => {
   try {
-    const { getToken } = await auth();
-    const token = await getToken();
-    const backendUrl =
-      process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5000";
     const body = await req.text();
-    const res = await fetch(`${backendUrl}/positions`, {
+    const res = await fetch(getApiUrl("/positions"), {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -39,15 +36,11 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     );
   }
-}
+});
 
-export async function GET(req: NextRequest) {
+export const GET = withAuth(async (req, { token }) => {
   try {
-    const { getToken } = await auth();
-    const token = await getToken();
-    const backendUrl =
-      process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5000";
-    const res = await fetch(`${backendUrl}/positions`, {
+    const res = await fetch(getApiUrl("/positions"), {
       method: "GET",
       headers: {
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -76,4 +69,4 @@ export async function GET(req: NextRequest) {
       { status: 500 }
     );
   }
-}
+});

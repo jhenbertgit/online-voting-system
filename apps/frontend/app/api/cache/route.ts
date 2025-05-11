@@ -1,10 +1,12 @@
-import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { NextResponse } from "next/server";
+import { withAuth } from "@/lib/auth-middleware";
+import { getApiUrl } from "@/lib/api";
 
-export async function POST(req: NextRequest) {
+export const POST = withAuth(async (req, { token }) => {
   try {
     // Parse and validate the request body
     const body = await req.json();
+    console.log("[CACHE][POST] Parsed body:", body);
     if (!body || typeof body !== "object") {
       return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
     }
@@ -25,12 +27,7 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
-    const { getToken } = await auth();
-    const token = await getToken();
-    const backendUrl =
-      process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
-
-    const res = await fetch(`${backendUrl}/api/v1/cache`, {
+    const res = await fetch(getApiUrl("/cache"), {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -42,8 +39,10 @@ export async function POST(req: NextRequest) {
     let data;
     try {
       data = await res.json();
+      console.log("[CACHE][POST] Backend response:", data);
     } catch (e) {
       data = { error: "Invalid response from backend" };
+      console.error("[CACHE][POST] Failed to parse backend response", e);
     }
     if (!res.ok) {
       return NextResponse.json(
@@ -54,8 +53,10 @@ export async function POST(req: NextRequest) {
         { status: res.status }
       );
     }
-    return NextResponse.json(data, { status: res.status });
+
+    return NextResponse.json(data, { status: 201 });
   } catch (err: any) {
+    console.error("[CACHE][POST] Error:", err);
     if (err instanceof SyntaxError) {
       return NextResponse.json({ error: "Malformed JSON" }, { status: 400 });
     }
@@ -64,4 +65,4 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     );
   }
-}
+});

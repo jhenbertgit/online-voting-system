@@ -23,6 +23,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Position } from "database/src/client";
 import { User } from "lucide-react";
+import debounce from "lodash.debounce";
 
 // Step order (can be changed, but keeps the sequence)
 const VOTE_SEQUENCE = [
@@ -110,27 +111,58 @@ export default function BallotPage() {
     }
   }, [isBallotCacheSuccess, ballotCacheData, reset]);
 
-  // Cache ballot after each change
+  /**
+   * Ballot Caching Logic:
+   * - On form value change, debounce and POST ballot to /api/ballot-cache.
+   * - On load, GET cached ballot and prefill form.
+   * - Ensures user progress is saved and restored across sessions.
+   * - Uses userId as cache key for multi-user support.
+   * - Handles auth token for secure backend access.
+   */
+  const watchedValues = watch();
+
+  const debouncedCache = React.useRef(
+    debounce(
+      async (
+        userId: string,
+        ballot: BallotFormValues,
+        getToken: () => Promise<string | null>
+      ) => {
+        try {
+          const token = await getToken();
+          const res = await fetch("/api/ballot-cache", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            },
+            body: JSON.stringify({ userId, ballot }),
+          });
+          if (!res.ok) {
+            throw new Error("Failed to cache ballot");
+          }
+        } catch (err) {
+          toast.error("Failed to save ballot draft");
+          // Optionally log error
+          console.error("[Ballot Caching] Error saving ballot:", err);
+        }
+      },
+      500
+    )
+  ).current;
+
   useEffect(() => {
     if (!userId) return;
-    (async () => {
-      const token = await getToken();
-      await fetch("/api/ballot-cache", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({ userId, ballot: getValues() }),
-      });
-    })();
-  }, [getValues, userId, getToken]);
+    debouncedCache(userId, watchedValues, getToken);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [watchedValues, userId, getToken]);
 
   // Submit ballot mutation
-  let toastId: string | number;
-  let txHash: string | undefined;
+  let txHash: string | undefined =
+    "0x869cd20b16f5128127b4b65b42664616d3d17619c8191b4b65b42664616d3d17619c819";
   const submitBallot = useMutation({
     mutationFn: async (ballot: BallotFormValues) => {
+      const toastId = toast.loading("Submitting vote...");
       const token = await getToken();
       // TODO: Next.js proxy API route for submit-ballot
       // Submit to blockchain
@@ -144,10 +176,13 @@ export default function BallotPage() {
       // });
       // if (!res.ok) throw new Error("Failed to submit ballot");
       // return res.json();
+      setTimeout(() => {
+        console.log("Submitted ballot:", ballot);
+      }, 10000);
 
-      console.log("Submitted ballot:", ballot);
+      return toastId;
     },
-    onSuccess: () => {
+    onSuccess: (toastId: string | number) => {
       toast.success("Vote submitted successfully", {
         id: toastId,
         description: `Transaction: ${txHash?.slice(0, 6)}...${txHash?.slice(-4)}`,
@@ -161,14 +196,8 @@ export default function BallotPage() {
         },
       });
     },
-    onError: () => {
+    onError: (toastId: string | number) => {
       toast.error("Failed to submit vote", { id: toastId });
-    },
-    onMutate: () => {
-      toastId = toast.loading("Submitting vote...");
-    },
-    onSettled: () => {
-      toast.dismiss(toastId);
     },
   });
 
@@ -355,7 +384,7 @@ export default function BallotPage() {
                     candidates.length === 2
                       ? "grid grid-cols-1 sm:grid-cols-2 gap-6"
                       : candidates.length > 2
-                        ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6"
+                        ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
                         : "flex flex-col gap-6"
                   }
                 >
