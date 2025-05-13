@@ -1,36 +1,108 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Online Voting System Frontend
 
-## Getting Started
+Welcome to the **Online Voting System Frontend**! This project provides a secure, scalable, and user-friendly interface for blockchain-based online elections. It is designed to empower voters, admins, and election organizers with robust features and a modern UX.
 
-First, run the development server:
+---
+
+## 🚀 Project Objective
+
+- **Enable secure, transparent, and accessible online voting** leveraging blockchain and modern web technologies.
+- **Support multiple user roles** (voter, admin, election_officer) with tailored experiences.
+- **Integrate with Ethereum smart contracts** for verifiable elections and results.
+- **Provide real-time analytics and result dashboards**.
+- **Ensure accessibility, reliability, and privacy** for all users.
+
+---
+
+## 🏗️ Project Structure
+
+- `app/` – Next.js App Router structure: pages, layouts, and route handlers (including `api/` endpoints for SSR or proxying to backend).
+  - `(auth)/` – Authentication flows (Clerk integration)
+  - `admin/` – Admin dashboard and management
+  - `ballot/` – Ballot casting and voting flows
+  - `results/` – Election result displays
+  - `api/` – API routes for frontend-specific logic
+  - `globals.css` – Global styles (TailwindCSS)
+  - `layout.tsx` & `page.tsx` – Root layout and entry page
+- `components/`
+  - `shared/` – High-level app components (e.g., Dashboard, Analytics, Navbar, WalletConnect)
+  - `ui/` – Shadcn UI primitives (Button, Dialog, Table, etc.)
+- `contexts/` – React Contexts for app-wide state (elections, contracts)
+- `lib/` – Utilities (API, Merkle tree, role helpers, wagmi/web3 utils)
+- `types/` – TypeScript type definitions
+- `abis/` – Ethereum contract ABIs
+- `public/` – Static assets (SVGs, icons)
+
+---
+
+## 🛠️ Tech Stack
+
+- **Framework:** [Next.js App Router](https://nextjs.org/docs/app) (TypeScript)
+- **Styling:** [Tailwind CSS](https://tailwindcss.com/), [Shadcn UI](https://ui.shadcn.com/)
+- **State/Data:** React Context, [TanStack Query](https://tanstack.com/query/latest), [React Hook Form](https://react-hook-form.com/), [Zod](https://zod.dev/)
+- **Auth:** [Clerk](https://clerk.com/)
+- **Blockchain:** [ethers.js](https://docs.ethers.org/), [wagmi](https://wagmi.sh/), [merkletreejs](https://github.com/miguelmota/merkletreejs)
+- **Lint/Format:** ESLint, Prettier
+- **Package Manager:** pnpm
+
+---
+
+## 🧑‍💻 Onboarding & Development
+
+### 1. Install Dependencies
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+pnpm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 2. Environment Setup
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- Copy `.env.example` to `.env` and fill in required values (see comments in `.env.example`).
+- Ensure you have Clerk, Ethereum node, and backend API endpoints configured.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 3. Run the Dev Server
 
-## Learn More
+```bash
+pnpm dev
+```
 
-To learn more about Next.js, take a look at the following resources:
+App will be available at [http://localhost:3000](http://localhost:3000).
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### 4. Project Scripts
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- `pnpm dev` – Start development server
+- `pnpm build` – Build for production
+- `pnpm lint` – Lint codebase
 
-## Deploy on Vercel
+### 5. Code Quality
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- Use TypeScript for all code.
+- Follow project conventions (see `.eslintrc` and Prettier config).
+- UI: Use Tailwind and Shadcn UI primitives.
+- Data fetching: Use TanStack Query for all async data.
+- Forms: Use React Hook Form + Zod for validation.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+---
+
+## 🤝 Contributing
+
+- Branch from `main` and use descriptive branch names.
+- Write clear PR descriptions and reference related issues.
+- Add/Update documentation for new features.
+- Test your changes locally before submitting PRs.
+
+---
+
+## 📂 Useful Resources
+
+- [Next.js Docs](https://nextjs.org/docs)
+- [Shadcn UI Docs](https://ui.shadcn.com/docs)
+- [TanStack Query Docs](https://tanstack.com/query/latest/docs/framework/react/overview)
+- [Clerk Docs](https://clerk.com/docs)
+- [wagmi Docs](https://wagmi.sh/docs/)
+- [ethers.js Docs](https://docs.ethers.org/)
+- [Tailwind CSS Docs](https://tailwindcss.com/docs)
+
+---
+
+For architecture, code, or onboarding questions, please ask the project maintainers or check the `/docs` folder if available.
