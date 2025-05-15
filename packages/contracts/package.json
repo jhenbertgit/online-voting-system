@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "",
   "main": "scripts/deploy.ts",
+  "type": "module",
   "scripts": {
     "test": "hardhat test",
     "deploy": "ts-node scripts/deploy.ts",

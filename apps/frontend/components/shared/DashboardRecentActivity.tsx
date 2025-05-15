@@ -1,7 +1,6 @@
 "use client";
 import React from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Table } from "@/components/ui/table";
 import {
   ColumnDef,
@@ -17,94 +16,129 @@ import { Button } from "@/components/ui/button";
 import { ArrowUpDown, ChevronLeft, ChevronRight } from "lucide-react";
 
 /**
- * Type for a single election event in the activity log.
+ * Type for a single vote transmission audit row.
  */
-type ElectionEvent = {
-  id: number;
+interface VoteAuditRow {
   timestamp: string;
-  eventType:
-    | "Election Created"
-    | "Election Opened"
-    | "Election Closed"
-    | "Vote Cast"
-    | "Voter Registered"
-    | "Merkle Root Published"
-    | "Contract Upgraded";
-  description: string;
-  actor: string;
-  blockchainRef?: string;
-};
+  candidate: string;
+  offChain: number;
+  onChain: number;
+  discrepancy: boolean;
+}
 
-/**
- * Color mapping for event types.
- */
-const eventTypeColor: Record<ElectionEvent["eventType"], string> = {
-  "Election Created": "bg-blue-100 text-blue-800",
-  "Election Opened": "bg-green-100 text-green-800",
-  "Election Closed": "bg-red-100 text-red-800",
-  "Vote Cast": "bg-emerald-100 text-emerald-800",
-  "Voter Registered": "bg-purple-100 text-purple-800",
-  "Merkle Root Published": "bg-yellow-100 text-yellow-800",
-  "Contract Upgraded": "bg-pink-100 text-pink-800",
-};
-
-/**
- * Mock data for recent election events.
- */
-const mockEvents: ElectionEvent[] = [
+// Mock data matching the chart for audit table
+const mockVoteAuditRows: VoteAuditRow[] = [
   {
-    id: 1,
-    timestamp: "2025-05-04 16:00 UTC",
-    eventType: "Vote Cast",
-    description: "Bob cast a vote in Election #3",
-    actor: "Bob",
-    blockchainRef: "0x123...abc",
+    timestamp: "2025-05-15T09:00:00+08:00",
+    candidate: "Alice",
+    offChain: 10,
+    onChain: 0,
+    discrepancy: true,
   },
   {
-    id: 2,
-    timestamp: "2025-05-04 15:45 UTC",
-    eventType: "Election Closed",
-    description: "Election #3 was closed",
-    actor: "Admin Alice",
-    blockchainRef: "0x456...def",
+    timestamp: "2025-05-15T09:00:00+08:00",
+    candidate: "Bob",
+    offChain: 8,
+    onChain: 0,
+    discrepancy: true,
   },
   {
-    id: 3,
-    timestamp: "2025-05-04 15:30 UTC",
-    eventType: "Merkle Root Published",
-    description: "Merkle root published for batch #12",
-    actor: "System",
-    blockchainRef: "0x789...ghi",
+    timestamp: "2025-05-15T09:00:00+08:00",
+    candidate: "Charlie",
+    offChain: 5,
+    onChain: 0,
+    discrepancy: true,
   },
   {
-    id: 4,
-    timestamp: "2025-05-04 15:20 UTC",
-    eventType: "Voter Registered",
-    description: "Diana registered as a voter",
-    actor: "Diana",
+    timestamp: "2025-05-15T09:30:00+08:00",
+    candidate: "Alice",
+    offChain: 30,
+    onChain: 20,
+    discrepancy: true,
   },
   {
-    id: 5,
-    timestamp: "2025-05-04 15:10 UTC",
-    eventType: "Contract Upgraded",
-    description: "Voting contract upgraded to v2.1",
-    actor: "Admin Charlie",
-    blockchainRef: "0xabc...123",
+    timestamp: "2025-05-15T09:30:00+08:00",
+    candidate: "Bob",
+    offChain: 18,
+    onChain: 12,
+    discrepancy: true,
   },
   {
-    id: 6,
-    timestamp: "2025-05-04 15:05 UTC",
-    eventType: "Election Opened",
-    description: "Election #3 was opened",
-    actor: "Admin Alice",
-    blockchainRef: "0x456...def",
+    timestamp: "2025-05-15T09:30:00+08:00",
+    candidate: "Charlie",
+    offChain: 15,
+    onChain: 10,
+    discrepancy: true,
+  },
+  {
+    timestamp: "2025-05-15T10:00:00+08:00",
+    candidate: "Alice",
+    offChain: 60,
+    onChain: 50,
+    discrepancy: true,
+  },
+  {
+    timestamp: "2025-05-15T10:00:00+08:00",
+    candidate: "Bob",
+    offChain: 40,
+    onChain: 32,
+    discrepancy: true,
+  },
+  {
+    timestamp: "2025-05-15T10:00:00+08:00",
+    candidate: "Charlie",
+    offChain: 30,
+    onChain: 25,
+    discrepancy: true,
+  },
+  {
+    timestamp: "2025-05-15T10:30:00+08:00",
+    candidate: "Alice",
+    offChain: 90,
+    onChain: 80,
+    discrepancy: true,
+  },
+  {
+    timestamp: "2025-05-15T10:30:00+08:00",
+    candidate: "Bob",
+    offChain: 70,
+    onChain: 65,
+    discrepancy: true,
+  },
+  {
+    timestamp: "2025-05-15T10:30:00+08:00",
+    candidate: "Charlie",
+    offChain: 55,
+    onChain: 50,
+    discrepancy: true,
+  },
+  {
+    timestamp: "2025-05-15T11:00:00+08:00",
+    candidate: "Alice",
+    offChain: 120,
+    onChain: 115,
+    discrepancy: true,
+  },
+  {
+    timestamp: "2025-05-15T11:00:00+08:00",
+    candidate: "Bob",
+    offChain: 100,
+    onChain: 98,
+    discrepancy: true,
+  },
+  {
+    timestamp: "2025-05-15T11:00:00+08:00",
+    candidate: "Charlie",
+    offChain: 80,
+    onChain: 77,
+    discrepancy: true,
   },
 ];
 
 /**
  * Table columns definition for election events.
  */
-const columns: ColumnDef<ElectionEvent>[] = [
+const columns: ColumnDef<VoteAuditRow>[] = [
   {
     accessorKey: "timestamp",
     header: ({ column }) => (
@@ -117,58 +151,36 @@ const columns: ColumnDef<ElectionEvent>[] = [
         <ArrowUpDown className="ml-2 h-4 w-4" />
       </Button>
     ),
+    cell: (info) =>
+      new Date(info.getValue() as string).toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
+  },
+  {
+    accessorKey: "candidate",
+    header: "Candidate",
     cell: (info) => info.getValue() as string,
   },
   {
-    accessorKey: "eventType",
-    header: ({ column }) => (
-      <Button
-        variant="ghost"
-        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        className="px-0"
-      >
-        Event Type
-        <ArrowUpDown className="ml-2 h-4 w-4" />
-      </Button>
-    ),
-    cell: (info) => (
-      <Badge
-        className={
-          eventTypeColor[info.getValue() as ElectionEvent["eventType"]]
-        }
-      >
-        {info.getValue() as string}
-      </Badge>
-    ),
+    accessorKey: "offChain",
+    header: "Off-chain",
+    cell: (info) => info.getValue() as number,
   },
   {
-    accessorKey: "description",
-    header: "Description",
-    cell: (info) => info.getValue() as string,
+    accessorKey: "onChain",
+    header: "On-chain",
+    cell: (info) => info.getValue() as number,
   },
   {
-    accessorKey: "actor",
-    header: "Actor",
-    cell: (info) => info.getValue() as string,
-  },
-  {
-    accessorKey: "blockchainRef",
-    header: "Blockchain Ref",
-    cell: (info) => {
-      const ref = info.getValue() as string | undefined;
-      return ref ? (
-        <a
-          href={`${process.env.NEXT_PUBLIC_POLYGONSCAN_URL}/${ref}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="underline text-blue-600 hover:text-blue-800"
-        >
-          {ref}
-        </a>
+    accessorKey: "discrepancy",
+    header: "Discrepancy",
+    cell: (info) =>
+      info.getValue() ? (
+        <span className="text-red-600 font-semibold">Yes</span>
       ) : (
-        <span className="text-muted-foreground">-</span>
-      );
-    },
+        <span className="text-green-600">No</span>
+      ),
   },
 ];
 
@@ -183,7 +195,7 @@ export const DashboardRecentActivity: React.FC = (): React.JSX.Element => {
     pageSize: 5,
   });
   const table = useReactTable({
-    data: mockEvents,
+    data: mockVoteAuditRows,
     columns,
     state: { sorting, pagination },
     onSortingChange: setSorting,
@@ -192,13 +204,13 @@ export const DashboardRecentActivity: React.FC = (): React.JSX.Element => {
     getSortedRowModel: getSortedRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     manualPagination: false,
-    pageCount: Math.ceil(mockEvents.length / 5),
+    pageCount: Math.ceil(mockVoteAuditRows.length / 5),
   });
   return (
     <Card>
       <CardHeader>
         <div className="text-sm font-medium text-muted-foreground">
-          Recent Election Events
+          Vote Transmission Audit
         </div>
       </CardHeader>
       <CardContent>

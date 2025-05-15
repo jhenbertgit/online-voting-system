@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { postApiResource } from "./api-client";
 import { toast } from "sonner";
 import { useAccount } from "wagmi";
 import { UserPlus2Icon, CheckCircle2Icon } from "lucide-react";
@@ -11,7 +12,7 @@ import { useElections } from "@/contexts";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useWriteContract, useTransaction } from "wagmi";
+import { useWriteContract } from "wagmi";
 import { VotingGuardianABI } from "@/abis";
 import { isAddress } from "ethers";
 import { config as wagmiConfig } from "@/lib/wagmi/config";
@@ -133,54 +134,52 @@ export function CreateElection(): React.JSX.Element {
   }
 
   // --- TanStack Query Mutations ---
-  const {
-    writeContract: writeCreateElection,
-    data: createElectionTx,
-    isPending: isCreateElectionPending,
-    isSuccess: isCreateElectionSuccess,
-    error: createElectionError,
-    reset: resetCreateElection,
-  } = useWriteContract();
-
-  const {
-    isLoading: isElectionTxConfirming,
-    isSuccess: isElectionTxConfirmed,
-  } = useTransaction({
-    hash: createElectionTx,
-  });
-
   const createElectionMutation = useMutation({
     mutationFn: async (data: ElectionFormType) => {
+      let txHash: `0x${string}`;
       if (!isConnected) {
         throw new Error(
           "Please connect your wallet before creating an election."
         );
       }
       const token = await getToken();
+      if (!token) {
+        throw new Error("Missing authentication token for election creation.");
+      }
       if (!data.dateRange.from || !data.dateRange.to) {
         throw new Error("Both start and end dates must be selected.");
       }
+      // Write to blockchain using wagmi writeContract
       const startTime = Math.floor(data.dateRange.from.getTime() / 1000);
       const endTime = Math.floor(data.dateRange.to.getTime() / 1000);
-      // Write to blockchain using wagmi hook
-      writeCreateElection({
-        abi: VotingGuardianABI,
-        address: contractAddress,
-        functionName: "createElection",
-        args: [
-          ethers.id(data.name),
-          data.name.toLowerCase(),
-          startTime,
-          endTime,
-          ethers.ZeroHash, // TODO: Add merkle root (voter IDs)
-        ],
-      });
-      // Wait for transaction confirmation
-      while (!isElectionTxConfirmed && !createElectionError) {
-        await new Promise((resolve) => setTimeout(resolve, 500));
+      try {
+        const { writeContract, waitForTransactionReceipt } = await import(
+          "@wagmi/core"
+        );
+        txHash = await writeContract(wagmiConfig, {
+          abi: VotingGuardianABI,
+          address: contractAddress,
+          functionName: "createElection",
+          args: [
+            ethers.id(data.name),
+            data.name.toLowerCase(),
+            startTime,
+            endTime,
+            ethers.ZeroHash, // TODO: Add merkle root (voter IDs)
+          ],
+          account: address as `0x${string}`,
+        });
+        await waitForTransactionReceipt(wagmiConfig, {
+          hash: txHash,
+          confirmations: 1,
+        });
+      } catch (err) {
+        throw new Error(
+          (err instanceof Error && err.message) ||
+            "Transaction confirmation failed."
+        );
       }
-      if (createElectionError) throw createElectionError;
-      // Create election to database
+      // Add election to database (off-chain)
       const startDate =
         data.dateRange.from instanceof Date
           ? data.dateRange.from.toISOString()
@@ -192,13 +191,15 @@ export function CreateElection(): React.JSX.Element {
       if (!startDate || !endDate) {
         throw new Error("Invalid date range provided.");
       }
-      const response = await fetch("/api/elections", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
+      if (!contractAddress) {
+        throw new Error("Missing contract address for election creation.");
+      }
+      if (!address) {
+        throw new Error("Missing admin address for election creation.");
+      }
+      await postApiResource(
+        "/api/elections",
+        {
           name: data.name.toLowerCase(),
           description: data.description,
           startDate,
@@ -207,16 +208,29 @@ export function CreateElection(): React.JSX.Element {
           contractAddress: contractAddress,
           adminAddress: address,
           onChainElectionId: ethers.id(data.name),
-        }),
-      });
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Backend submission failed");
-      }
-      return true;
+        },
+        token,
+        "Backend submission failed"
+      );
+      return { txHash };
     },
-    onSuccess: () => {
-      toast.success("Election created successfully!");
+    onSuccess: (data) => {
+      const { txHash } = data || {};
+      toast.success("Election created successfully!", {
+        description: txHash
+          ? `Transaction: ${txHash.slice(0, 6)}...${txHash.slice(-4)}`
+          : undefined,
+        action: txHash
+          ? {
+              label: "View",
+              onClick: () =>
+                window.open(
+                  `${process.env.NEXT_PUBLIC_POLYGONSCAN_URL}/tx/${txHash}`,
+                  "_blank"
+                ),
+            }
+          : undefined,
+      });
       setTab("position");
       queryClient.invalidateQueries({ queryKey: ["elections"] });
     },
@@ -233,25 +247,24 @@ export function CreateElection(): React.JSX.Element {
         );
       }
       const token = await getToken();
+      if (!token) {
+        throw new Error(
+          "Authentication token is missing. Please log in again."
+        );
+      }
       const onChainPositionId = ethers.id(data.name);
       //TODO: Add position to blockchain
 
       // Add position to database
-      const response = await fetch("/api/positions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
+      await postApiResource(
+        "/api/positions",
+        {
           ...data,
           onChainPositionId,
-        }),
-      });
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Failed to create position");
-      }
+        },
+        token,
+        "Failed to create position"
+      );
       return true;
     },
     onSuccess: () => {
@@ -265,25 +278,14 @@ export function CreateElection(): React.JSX.Element {
     },
   });
 
-  const {
-    writeContract: writeAddCandidate,
-    data: addCandidateTx,
-    isPending: isAddCandidatePending,
-    isSuccess: isAddCandidateSuccess,
-    error: addCandidateError,
-    reset: resetAddCandidate,
-  } = useWriteContract();
-
-  const { isLoading: isTxConfirming, isSuccess: isTxConfirmed } =
-    useTransaction({
-      hash: addCandidateTx,
-    });
+  const { reset: resetAddCandidate } = useWriteContract();
 
   type CreateCandidateMutationReturn = {
     payload: CandidateFormType & {
       onChainCandidateId: string;
     };
     toastId: string | number;
+    txHash: `0x${string}`;
   };
 
   const createCandidateMutation = useMutation<
@@ -294,6 +296,7 @@ export function CreateElection(): React.JSX.Element {
     mutationFn: async (
       data: CandidateFormType
     ): Promise<CreateCandidateMutationReturn> => {
+      let txHash: `0x${string}`;
       let toastId: string | number = toast.loading("Registering candidate...");
       if (!isConnected) {
         toast.dismiss(toastId);
@@ -302,6 +305,11 @@ export function CreateElection(): React.JSX.Element {
         );
       }
       const token = await getToken();
+      if (!token) {
+        throw new Error(
+          "Authentication token is missing. Please log in again."
+        );
+      }
       const idHash = ethers.id(data.name);
       // Pre-check for existing candidate in the same election (by onChainCandidateId)
       const election = elections.find((e) => e.id === data.electionId);
@@ -317,7 +325,6 @@ export function CreateElection(): React.JSX.Element {
       }
       // Convert positionId to a number for contract call (uint256 expected)
       const positionId = BigInt(ethers.id(data.positionId));
-
       try {
         const { simulateContract } = await import("@wagmi/core");
         await simulateContract(wagmiConfig, {
@@ -331,33 +338,28 @@ export function CreateElection(): React.JSX.Element {
         toast.dismiss(toastId);
         throw new Error(`Simulation failed: ${(simError as Error).message}`);
       }
-
       // Write to blockchain using wagmi hook
-      writeAddCandidate({
-        abi: VotingGuardianABI,
-        address: contractAddress,
-        functionName: "addCandidate",
-        args: [idHash, positionId],
-      });
-      // Wait for transaction confirmation with timeout
-      const maxWaitMs = 60000; // 60 seconds
-      const pollInterval = 500;
-      let waited = 0;
-      while (!isTxConfirmed && !addCandidateError && waited < maxWaitMs) {
-        await new Promise((resolve) => setTimeout(resolve, pollInterval));
-        waited += pollInterval;
-      }
-      if (!isTxConfirmed && !addCandidateError) {
+      try {
+        const { writeContract, waitForTransactionReceipt } = await import(
+          "@wagmi/core"
+        );
+        txHash = await writeContract(wagmiConfig, {
+          abi: VotingGuardianABI,
+          address: contractAddress,
+          functionName: "addCandidate",
+          args: [idHash, positionId],
+          account: address as `0x${string}`,
+        });
+        await waitForTransactionReceipt(wagmiConfig, {
+          hash: txHash,
+          confirmations: 1,
+        });
+      } catch (err) {
         toast.dismiss(toastId);
         throw new Error(
-          "Transaction confirmation timed out. Please try again."
+          (err instanceof Error && err.message) ||
+            "Transaction confirmation failed."
         );
-      }
-      console.log("isTxConfirmed: ", isTxConfirmed);
-      console.log("addCandidateError: ", addCandidateError);
-      if (addCandidateError) {
-        toast.dismiss(toastId);
-        throw addCandidateError;
       }
       // Add candidate to database
       const payload = {
@@ -369,39 +371,27 @@ export function CreateElection(): React.JSX.Element {
         positionId: data.positionId,
         electionId: data.electionId,
       };
-      let response;
-      try {
-        response = await fetch("/api/candidates", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(payload),
-        });
-      } catch (apiError) {
-        toast.dismiss(toastId);
-        throw new Error("Failed to reach the server. Please try again later.");
-      }
-      if (!response.ok) {
-        toast.dismiss(toastId);
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Candidate registration failed");
-      }
-      return { payload, toastId };
+      await postApiResource(
+        "/api/candidates",
+        payload,
+        token,
+        "Candidate registration failed",
+        toastId
+      );
+      return { payload, toastId, txHash };
     },
     onSuccess: (data) => {
-      const { toastId } = data || {};
+      const { toastId, txHash } = data || {};
       if (toastId) {
         toast.success("Candidate registered!", {
           id: toastId,
-          description: `Transaction: ${addCandidateTx?.slice(0, 6)}...${addCandidateTx?.slice(-4)}`,
-          action: addCandidateTx
+          description: `Transaction: ${txHash?.slice(0, 6)}...${txHash?.slice(-4)}`,
+          action: txHash
             ? {
                 label: "View",
                 onClick: () =>
                   window.open(
-                    `${process.env.NEXT_PUBLIC_POLYGONSCAN_URL}/tx/${addCandidateTx}`,
+                    `${process.env.NEXT_PUBLIC_POLYGONSCAN_URL}/tx/${txHash}`,
                     "_blank"
                   ),
               }
@@ -411,7 +401,7 @@ export function CreateElection(): React.JSX.Element {
       candidateForm.reset();
       resetAddCandidate();
     },
-    onError: (err, _variables, context) => {
+    onError: (err, _variables) => {
       // context is undefined by default unless set via mutation options; so fallback to showing generic error
       toast.error(err.message || "Failed to register candidate");
       resetAddCandidate();

@@ -190,7 +190,7 @@ export default function BallotPage() {
           label: "View",
           onClick: () =>
             window.open(
-              `${process.env.NEXT_PUBLIC_POLYGONSCAN_URL}/${txHash}`,
+              `${process.env.NEXT_PUBLIC_POLYGONSCAN_URL}/tx/${txHash}`,
               "_blank"
             ),
         },
@@ -460,7 +460,7 @@ export default function BallotPage() {
                     candidates.length === 2
                       ? "grid grid-cols-1 sm:grid-cols-2 gap-6"
                       : candidates.length > 2
-                        ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6"
+                        ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
                         : "flex flex-col gap-6"
                   }
                 >
