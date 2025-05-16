@@ -9,7 +9,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { CreateElection } from "./CreateElection";
+import { CreateElection } from "../election/CreateElection";
 import { Button } from "../ui/button";
 
 /**
