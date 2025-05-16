@@ -1,18 +1,12 @@
 "use client";
-import React, { JSX } from "react";
+import React from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 
-/**
- * DashboardWidget displays a summary card for dashboard stats.
- *
- * @param {DashboardWidgetProps} props - The properties for the widget.
- * @returns {JSX.Element} The dashboard widget component.
- */
 export type DashboardWidgetProps = {
   /** Title of the widget */
   title: string;
   /** Value to display (main stat) */
-  value: string;
+  value: string | number;
   /** Optional: Description or subtitle */
   description?: string;
   /** Optional: Icon element (ReactNode) */
@@ -21,13 +15,19 @@ export type DashboardWidgetProps = {
   className?: string;
 };
 
+/**
+ * DashboardWidget displays a summary card for dashboard stats.
+ *
+ * @param {DashboardWidgetProps} props - The properties for the widget.
+ * @returns {JSX.Element} The dashboard widget component.
+ */
 export const DashboardWidget: React.FC<DashboardWidgetProps> = ({
   title,
   value,
   description,
   icon,
   className = "",
-}: DashboardWidgetProps): JSX.Element => {
+}: DashboardWidgetProps): React.JSX.Element => {
   return (
     <Card
       className={`flex flex-col justify-between shadow-md hover:shadow-lg transition-shadow duration-200 ${className}`}

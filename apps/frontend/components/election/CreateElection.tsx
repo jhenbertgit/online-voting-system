@@ -34,9 +34,14 @@ import { UserPlus2Icon, CheckCircle2Icon } from "lucide-react";
  *
  * @returns {React.JSX.Element} The complete election creation workflow UI.
  */
-export function CreateElection(): React.JSX.Element {
+interface CreateElectionProps {
+  onCancel: () => void;
+}
+
+export function CreateElection({
+  onCancel,
+}: CreateElectionProps): React.JSX.Element {
   const { address, isConnected } = useAccount();
-  const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<"election" | "position" | "candidate">(
     "election"
   );
@@ -389,7 +394,7 @@ export function CreateElection(): React.JSX.Element {
             form={electionForm}
             onSubmit={(data) => createElectionMutation.mutate(data)}
             isPending={createElectionMutation.isPending}
-            onCancel={() => setOpen(false)}
+            onCancel={onCancel}
           />
         </FormProvider>
       </TabsContent>

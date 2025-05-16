@@ -1,6 +1,6 @@
 import { Controller, UseFormReturn } from "react-hook-form";
 import { ElectionFormType } from "./schema";
-import { DatePickerWithRange } from "../shared/DatePickerWithRange";
+import { DatePickerWithRange } from "@/components/shared/DatePickerWithRange";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";

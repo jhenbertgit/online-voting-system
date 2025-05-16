@@ -15,9 +15,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { ArrowUpDown, ChevronLeft, ChevronRight } from "lucide-react";
 
-/**
- * Type for a single vote transmission audit row.
- */
 interface VoteAuditRow {
   timestamp: string;
   candidate: string;
@@ -26,8 +23,130 @@ interface VoteAuditRow {
   discrepancy: boolean;
 }
 
-// Mock data matching the chart for audit table
-const mockVoteAuditRows: VoteAuditRow[] = [
+// You may want to move columns and mock data to a separate file for larger projects
+const columns: ColumnDef<VoteAuditRow>[] = [
+  {
+    accessorKey: "timestamp",
+    header: ({ column }) => (
+      <Button
+        variant="ghost"
+        onClick={() => column.toggleSorting()}
+        className="px-0"
+      >
+        Timestamp
+        <ArrowUpDown
+          className={`ml-2 h-4 w-4 transition-transform ${
+            column.getIsSorted() === "asc"
+              ? "text-blue-600 rotate-180"
+              : column.getIsSorted() === "desc"
+                ? "text-blue-600"
+                : "text-muted-foreground"
+          }`}
+        />
+      </Button>
+    ),
+    cell: (info) =>
+      new Date(info.getValue() as string).toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
+  },
+  {
+    accessorKey: "candidate",
+    header: ({ column }) => (
+      <Button
+        variant="ghost"
+        onClick={() => column.toggleSorting()}
+        className="px-0"
+      >
+        Candidate
+        <ArrowUpDown
+          className={`ml-2 h-4 w-4 transition-transform ${
+            column.getIsSorted() === "asc"
+              ? "text-blue-600 rotate-180"
+              : column.getIsSorted() === "desc"
+                ? "text-blue-600"
+                : "text-muted-foreground"
+          }`}
+        />
+      </Button>
+    ),
+    cell: (info) => info.getValue() as string,
+  },
+  {
+    accessorKey: "offChain",
+    header: ({ column }) => (
+      <Button
+        variant="ghost"
+        onClick={() => column.toggleSorting()}
+        className="px-0"
+      >
+        Off-chain
+        <ArrowUpDown
+          className={`ml-2 h-4 w-4 transition-transform ${
+            column.getIsSorted() === "asc"
+              ? "text-blue-600 rotate-180"
+              : column.getIsSorted() === "desc"
+                ? "text-blue-600"
+                : "text-muted-foreground"
+          }`}
+        />
+      </Button>
+    ),
+    cell: (info) => info.getValue() as number,
+  },
+  {
+    accessorKey: "onChain",
+    header: ({ column }) => (
+      <Button
+        variant="ghost"
+        onClick={() => column.toggleSorting()}
+        className="px-0"
+      >
+        On-chain
+        <ArrowUpDown
+          className={`ml-2 h-4 w-4 transition-transform ${
+            column.getIsSorted() === "asc"
+              ? "text-blue-600 rotate-180"
+              : column.getIsSorted() === "desc"
+                ? "text-blue-600"
+                : "text-muted-foreground"
+          }`}
+        />
+      </Button>
+    ),
+    cell: (info) => info.getValue() as number,
+  },
+  {
+    accessorKey: "discrepancy",
+    header: ({ column }) => (
+      <Button
+        variant="ghost"
+        onClick={() => column.toggleSorting()}
+        className="px-0"
+      >
+        Discrepancy
+        <ArrowUpDown
+          className={`ml-2 h-4 w-4 transition-transform ${
+            column.getIsSorted() === "asc"
+              ? "text-blue-600 rotate-180"
+              : column.getIsSorted() === "desc"
+                ? "text-blue-600"
+                : "text-muted-foreground"
+          }`}
+        />
+      </Button>
+    ),
+    cell: (info) =>
+      info.getValue() ? (
+        <span className="text-red-600 font-semibold">Yes</span>
+      ) : (
+        <span className="text-green-600">No</span>
+      ),
+  },
+];
+
+const data: VoteAuditRow[] = [
   {
     timestamp: "2025-05-15T09:00:00+08:00",
     candidate: "Alice",
@@ -136,66 +255,18 @@ const mockVoteAuditRows: VoteAuditRow[] = [
 ];
 
 /**
- * Table columns definition for election events.
+ * VoteTransmissionAudit displays a paginated, sortable table of recent vote transmission events.
+ * @returns {React.JSX.Element} The vote transmission audit card.
  */
-const columns: ColumnDef<VoteAuditRow>[] = [
-  {
-    accessorKey: "timestamp",
-    header: ({ column }) => (
-      <Button
-        variant="ghost"
-        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        className="px-0"
-      >
-        Timestamp
-        <ArrowUpDown className="ml-2 h-4 w-4" />
-      </Button>
-    ),
-    cell: (info) =>
-      new Date(info.getValue() as string).toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit",
-      }),
-  },
-  {
-    accessorKey: "candidate",
-    header: "Candidate",
-    cell: (info) => info.getValue() as string,
-  },
-  {
-    accessorKey: "offChain",
-    header: "Off-chain",
-    cell: (info) => info.getValue() as number,
-  },
-  {
-    accessorKey: "onChain",
-    header: "On-chain",
-    cell: (info) => info.getValue() as number,
-  },
-  {
-    accessorKey: "discrepancy",
-    header: "Discrepancy",
-    cell: (info) =>
-      info.getValue() ? (
-        <span className="text-red-600 font-semibold">Yes</span>
-      ) : (
-        <span className="text-green-600">No</span>
-      ),
-  },
-];
-
-/**
- * DashboardRecentActivity displays a paginated, sortable table of recent election-related events.
- * @returns {React.JSX.Element} The recent activity card.
- */
-export const DashboardRecentActivity: React.FC = (): React.JSX.Element => {
+export const VoteTransmissionAudit: React.FC = (): React.JSX.Element => {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [pagination, setPagination] = React.useState<PaginationState>({
     pageIndex: 0,
     pageSize: 5,
   });
+
   const table = useReactTable({
-    data: mockVoteAuditRows,
+    data,
     columns,
     state: { sorting, pagination },
     onSortingChange: setSorting,
@@ -204,13 +275,13 @@ export const DashboardRecentActivity: React.FC = (): React.JSX.Element => {
     getSortedRowModel: getSortedRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     manualPagination: false,
-    pageCount: Math.ceil(mockVoteAuditRows.length / 5),
   });
+
   return (
     <Card>
       <CardHeader>
         <div className="text-sm font-medium text-muted-foreground">
-          Vote Transmission Audit
+          Recent Vote Transmission Activity
         </div>
       </CardHeader>
       <CardContent>
@@ -219,11 +290,13 @@ export const DashboardRecentActivity: React.FC = (): React.JSX.Element => {
             {table.getHeaderGroups().map((headerGroup) => (
               <tr key={headerGroup.id}>
                 {headerGroup.headers.map((header) => (
-                  <th key={header.id} className="py-2 px-2">
-                    {flexRender(
-                      header.column.columnDef.header,
-                      header.getContext()
-                    )}
+                  <th key={header.id}>
+                    {header.isPlaceholder
+                      ? null
+                      : flexRender(
+                          header.column.columnDef.header,
+                          header.getContext()
+                        )}
                   </th>
                 ))}
               </tr>
@@ -231,9 +304,9 @@ export const DashboardRecentActivity: React.FC = (): React.JSX.Element => {
           </thead>
           <tbody>
             {table.getRowModel().rows.map((row) => (
-              <tr key={row.id} className="odd:bg-muted">
+              <tr key={row.id}>
                 {row.getVisibleCells().map((cell) => (
-                  <td key={cell.id} className="py-2 px-2">
+                  <td key={cell.id}>
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
                   </td>
                 ))}

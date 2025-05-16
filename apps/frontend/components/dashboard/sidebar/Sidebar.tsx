@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 import { SignedIn, UserButton } from "@clerk/nextjs";
 import { Home, BarChart2 } from "lucide-react";
 
-// You can move this to a constants file if you want to reuse it elsewhere
 const navLinks = [
   {
     label: "Dashboard",
@@ -16,11 +15,11 @@ const navLinks = [
 ];
 
 /**
- * DashboardSidebar displays the admin sidebar with navigation links and user profile.
+ * Sidebar displays the admin sidebar with navigation links and user profile.
  * Highlights the active route and docks the user button at the bottom.
  * @returns {React.JSX.Element} The sidebar component.
  */
-export const DashboardSidebar: React.FC = (): React.JSX.Element => {
+export const Sidebar: React.FC = (): React.JSX.Element => {
   const pathname = usePathname();
   return (
     <aside className="h-screen w-64 bg-white border-r flex flex-col shadow-sm sticky top-0 left-0 z-30">

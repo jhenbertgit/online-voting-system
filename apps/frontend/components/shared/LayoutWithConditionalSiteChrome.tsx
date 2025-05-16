@@ -1,6 +1,6 @@
 "use client";
 
-import { type JSX } from "react";
+import React from "react";
 import Navbar from "./Navbar";
 import { usePathname } from "next/navigation";
 
@@ -15,7 +15,7 @@ export default function LayoutWithConditionalSiteChrome({
   children,
 }: {
   children: React.ReactNode;
-}): JSX.Element {
+}): React.JSX.Element {
   const pathname = usePathname();
   const hideSiteChromeRoutes = ["/admin", "/sign-in", "/sign-up", "/redirect"];
   const showSiteChrome = !hideSiteChromeRoutes.some((route) =>
