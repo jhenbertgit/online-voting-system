@@ -1,12 +1,13 @@
 "use client";
 import React from "react";
-import { Sidebar } from "../dashboard/sidebar";
-import { VoteTransmissionAudit } from "../dashboard/vote-transmission-audit";
-import { WalletConnectCard } from "./WalletConnectCard";
+import { Sidebar } from "../../dashboard/sidebar";
+import { VoteTransmissionAudit } from "../../dashboard/vote-transmission-audit";
+import { WalletConnectCard } from "../WalletConnectCard";
 import { useAccount } from "wagmi";
-import { AnalyticsChart } from "../dashboard/analytics-chart";
-import { QuickActions } from "../dashboard/quick-actions";
-import { StatCards } from "../dashboard/stat-cards";
+import { AnalyticsChart } from "../../dashboard/analytics-chart";
+import { QuickActions } from "../../dashboard/quick-actions";
+import { StatCards } from "../../dashboard/stat-cards";
+import { Footer } from "./Footer";
 
 /**
  * DashboardLayout composes the main dashboard sections in layout with sidebar.
@@ -33,11 +34,7 @@ export const DashboardLayout: React.FC = (): React.JSX.Element => {
             </div>
           </div>
         </main>
-        <footer className="py-6 border-t">
-          <div className="text-center text-sm text-gray-500">
-            2025 VoteGuard. All rights reserved.
-          </div>
-        </footer>
+        <Footer />
       </div>
     </div>
   );

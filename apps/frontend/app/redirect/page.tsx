@@ -3,6 +3,7 @@
 import React, { useEffect } from "react";
 import { useUser } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
+import { Loader2 } from "lucide-react";
 
 /**
  * RedirectPage checks the user's role and redirects accordingly.
@@ -23,8 +24,14 @@ export default function RedirectPage(): React.JSX.Element {
   }, [user, isLoaded, router]);
 
   return (
-    <div className="flex items-center justify-center min-h-screen text-lg">
-      Redirecting…
+    <div className="flex items-center justify-center min-h-screen">
+      <div role="status" aria-live="polite" className="flex flex-col items-center gap-4">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <p className="text-muted-foreground">
+          <span className="sr-only">Redirecting...</span>
+          <span aria-hidden="true">Redirecting...</span>
+        </p>
+      </div>
     </div>
   );
 }

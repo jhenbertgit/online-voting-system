@@ -3,7 +3,7 @@ import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { SignedIn, UserButton } from "@clerk/nextjs";
-import { Home, BarChart2 } from "lucide-react";
+import { Home, ShieldCheck } from "lucide-react";
 
 const navLinks = [
   {
@@ -25,7 +25,7 @@ export const Sidebar: React.FC = (): React.JSX.Element => {
     <aside className="h-screen w-64 bg-white border-r flex flex-col shadow-sm sticky top-0 left-0 z-30">
       <div className="flex items-center gap-2 px-6 py-5 border-b">
         <div className="bg-primary text-white rounded-full w-8 h-8 flex items-center justify-center">
-          <BarChart2 className="w-5 h-5" />
+          <ShieldCheck className="w-5 h-5" />
         </div>
         <span className="font-bold text-lg tracking-wide">VoteGuard</span>
       </div>

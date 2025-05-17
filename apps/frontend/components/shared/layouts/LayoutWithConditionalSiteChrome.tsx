@@ -3,6 +3,7 @@
 import React from "react";
 import Navbar from "./Navbar";
 import { usePathname } from "next/navigation";
+import { Footer } from "./Footer";
 
 /**
  * LayoutWithConditionalSiteChrome conditionally renders the Navbar and Footer based on the current route.
@@ -25,13 +26,7 @@ export default function LayoutWithConditionalSiteChrome({
     <div className="min-h-screen flex flex-col">
       {showSiteChrome && <Navbar />}
       {children}
-      {showSiteChrome && (
-        <footer className="py-6 border-t">
-          <div className="container text-center text-sm text-gray-500">
-            2025 VoteGuard. All rights reserved.
-          </div>
-        </footer>
-      )}
+      {showSiteChrome && <Footer />}
     </div>
   );
 }

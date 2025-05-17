@@ -93,6 +93,7 @@ export const AnalyticsChart: React.FC = (): React.JSX.Element => {
                     if (offChain !== onChain) {
                       return (
                         <circle
+                          key={`${candidate}_mismatch_${cx}_${cy}`}
                           cx={cx}
                           cy={cy}
                           r={7}
@@ -103,7 +104,13 @@ export const AnalyticsChart: React.FC = (): React.JSX.Element => {
                       );
                     }
                     return (
-                      <circle cx={cx} cy={cy} r={3} fill={CHART_COLORS[cIdx]} />
+                      <circle
+                        key={`${candidate}_match_${cx}_${cy}`}
+                        cx={cx}
+                        cy={cy}
+                        r={3}
+                        fill={CHART_COLORS[cIdx]}
+                      />
                     );
                   }}
                   activeDot={{ r: 7 }}

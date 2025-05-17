@@ -7,6 +7,7 @@ import { type JSX } from "react";
 import { X, Menu } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
+import { SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
 
 /**
  * Navbar is the main top navigation bar for SecureVote.
@@ -29,13 +30,41 @@ export default function Navbar(): JSX.Element {
     setIsOpen(false);
   }, [pathname]);
 
-  // Navbar scroll effect
+  // Navbar scroll effect with requestAnimationFrame for performance
   useEffect(() => {
+    let animationFrameId: number;
+    let lastScrollY = window.scrollY;
+    const SCROLL_THRESHOLD = 10;
+
     const handleScroll = () => {
-      setIsScrolled(window.scrollY > 10);
+      // Only proceed if we don't have an animation frame already scheduled
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+      }
+
+      // Schedule the update for the next animation frame
+      animationFrameId = requestAnimationFrame(() => {
+        const currentScrollY = window.scrollY;
+
+        // Only update state if scroll position has meaningfully changed
+        if (Math.abs(currentScrollY - lastScrollY) > 1) {
+          setIsScrolled(currentScrollY > SCROLL_THRESHOLD);
+          lastScrollY = currentScrollY;
+        }
+      });
     };
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
+
+    // Use passive event listener for better scrolling performance
+    const opts: AddEventListenerOptions = { passive: true };
+    window.addEventListener("scroll", handleScroll, opts);
+
+    // Cleanup function
+    return () => {
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+      }
+      window.removeEventListener("scroll", handleScroll, opts);
+    };
   }, []);
 
   return (
@@ -50,7 +79,10 @@ export default function Navbar(): JSX.Element {
       <div className="container flex h-16 items-center justify-between px-4">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2 font-bold text-lg">
-          <ShieldCheckIcon className="h-6 w-6 text-blue-600" />
+          <ShieldCheckIcon
+            className="h-6 w-6 text-blue-600"
+            aria-hidden="true"
+          />
           <span>VoteGuard</span>
         </Link>
 
@@ -60,9 +92,10 @@ export default function Navbar(): JSX.Element {
             <Link
               key={link.name}
               href={link.href}
-              className={`transition-colors hover:text-blue-600 ${
+              className={cn(
+                "transition-colors hover:text-blue-600",
                 pathname === link.href ? "text-blue-600" : "text-foreground/60"
-              }`}
+              )}
             >
               {link.name}
             </Link>
@@ -70,15 +103,30 @@ export default function Navbar(): JSX.Element {
         </nav>
 
         {/* Desktop Auth Buttons */}
+        <SignedOut>
+          <div className="hidden md:flex items-center gap-2">
+            <Button variant="ghost" asChild>
+              <Link href="/sign-in">Sign In</Link>
+            </Button>
+            <Button asChild>
+              <Link href="/sign-up">Register</Link>
+            </Button>
+          </div>
+        </SignedOut>
 
-        <div className="hidden md:flex items-center gap-2">
-          <Button variant="ghost" asChild>
-            <Link href="/sign-in">Sign In</Link>
-          </Button>
-          <Button asChild>
-            <Link href="/sign-up">Register</Link>
-          </Button>
-        </div>
+        <SignedIn>
+          <UserButton
+            afterSwitchSessionUrl="/"
+            showName
+            appearance={{
+              elements: {
+                rootBox: "flex items-center gap-3 w-full",
+                avatarBox: "h-10 w-10",
+                username: "text-base font-semibold text-gray-700",
+              },
+            }}
+          />
+        </SignedIn>
 
         {/* Mobile Hamburger */}
         <Sheet open={isOpen} onOpenChange={setIsOpen}>
@@ -99,11 +147,12 @@ export default function Navbar(): JSX.Element {
                   <Link
                     key={link.name}
                     href={link.href}
-                    className={`px-4 py-2 text-lg font-medium transition-colors ${
+                    className={cn(
+                      "px-4 py-2 text-lg font-medium transition-colors",
                       pathname === link.href
                         ? "text-blue-600"
                         : "text-foreground/80 hover:text-blue-600"
-                    }`}
+                    )}
                   >
                     {link.name}
                   </Link>
@@ -111,14 +160,21 @@ export default function Navbar(): JSX.Element {
               </nav>
 
               {/* Mobile Auth Buttons */}
-              <div className="mt-auto pb-8 space-y-4">
-                <Button variant="outline" className="w-full" asChild>
-                  <Link href="/sign-in">Sign In</Link>
-                </Button>
-                <Button className="w-full" asChild>
-                  <Link href="/sign-up">Register</Link>
-                </Button>
-              </div>
+              <SignedOut>
+                <div className="mt-auto pb-8 space-y-4">
+                  <Button variant="outline" className="w-full" asChild>
+                    <Link href="/sign-in">Sign In</Link>
+                  </Button>
+                  <Button className="w-full" asChild>
+                    <Link href="/sign-up">Register</Link>
+                  </Button>
+                </div>
+              </SignedOut>
+              <SignedIn>
+                <div className="mt-auto pb-8">
+                  <UserButton afterSwitchSessionUrl="/" />
+                </div>
+              </SignedIn>
             </div>
           </SheetContent>
         </Sheet>

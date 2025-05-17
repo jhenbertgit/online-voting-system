@@ -5,8 +5,7 @@ import { ClerkProvider } from "@clerk/nextjs";
 import { Toaster } from "@/components/ui/sonner";
 import { WagmiProvider } from "@/components/shared/WagmiProvider";
 import { ElectionsProvider } from "@/contexts/electionsContext";
-import { ContractProvider } from "@/contexts/contractContext";
-import LayoutWithConditionalSiteChrome from "@/components/shared/LayoutWithConditionalSiteChrome";
+import LayoutWithConditionalSiteChrome from "@/components/shared/layouts/LayoutWithConditionalSiteChrome";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -43,18 +42,16 @@ export default function RootLayout({
     >
       <WagmiProvider>
         <ElectionsProvider>
-          <ContractProvider>
-            <html lang="en">
-              <body
-                className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-              >
-                <LayoutWithConditionalSiteChrome>
-                  {children}
-                </LayoutWithConditionalSiteChrome>
-                <Toaster richColors position="top-right" />
-              </body>
-            </html>
-          </ContractProvider>
+          <html lang="en">
+            <body
+              className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+            >
+              <LayoutWithConditionalSiteChrome>
+                {children}
+              </LayoutWithConditionalSiteChrome>
+              <Toaster richColors position="top-right" />
+            </body>
+          </html>
         </ElectionsProvider>
       </WagmiProvider>
     </ClerkProvider>
