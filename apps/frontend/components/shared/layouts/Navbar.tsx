@@ -131,7 +131,13 @@ export default function Navbar(): JSX.Element {
         {/* Mobile Hamburger */}
         <Sheet open={isOpen} onOpenChange={setIsOpen}>
           <SheetTrigger asChild className="md:hidden">
-            <Button variant="ghost" size="icon" aria-label="Toggle menu">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              aria-label="Toggle menu"
+              aria-controls="mobile-nav"
+              aria-expanded={isOpen}
+            >
               {isOpen ? (
                 <X className="h-5 w-5" />
               ) : (
@@ -139,7 +145,11 @@ export default function Navbar(): JSX.Element {
               )}
             </Button>
           </SheetTrigger>
-          <SheetContent side="right" className="w-[300px] sm:w-[400px]">
+          <SheetContent 
+            id="mobile-nav"
+            side="right" 
+            className="w-[300px] sm:w-[400px]"
+          >
             <div className="flex flex-col h-full">
               {/* Mobile Nav Links */}
               <nav className="mt-8 flex flex-col space-y-4">
